@@ -31,8 +31,17 @@ def repourl(repo_path):
     return util.normalize_url(test_util.fileurl(repo_path))
 
 class UtilityTests(test_util.TestBase):
-    def test_info_output(self):
-        repo, repo_path = self.load_and_fetch('two_heads.svndump')
+    stupid_mode_tests = True
+
+    def test_info_output(self, custom=False):
+        if custom:
+            config = {
+                'hgsubversionbranch.default': 'trunk',
+                'hgsubversionbranch.the_branch': 'branches/the_branch',
+                }
+        else:
+            config = {}
+        repo, repo_path = self.load_and_fetch('two_heads.svndump', config=config)
         hg.update(self.repo, 'the_branch')
         u = self.ui()
         u.pushbuffer()
@@ -85,8 +94,21 @@ class UtilityTests(test_util.TestBase):
                      })
         self.assertMultiLineEqual(actual, expected)
 
-    def test_info_single(self):
-        repo, repo_path = self.load_and_fetch('two_heads.svndump', subdir='trunk')
+    def test_info_output_custom(self):
+        self.test_info_output(custom=True)
+
+    def test_info_single(self, custom=False):
+        if custom:
+            subdir=None
+            config = {
+                'hgsubversionbranch.default': 'trunk/'
+                }
+        else:
+            subdir='trunk'
+            config = {}
+        repo, repo_path = self.load_and_fetch('two_heads.svndump',
+                                              subdir=subdir,
+                                              config=config)
         hg.update(self.repo, 'tip')
         u = self.ui()
         u.pushbuffer()
@@ -100,8 +122,14 @@ class UtilityTests(test_util.TestBase):
                      })
         self.assertMultiLineEqual(expected, actual)
 
+    def test_info_custom_single(self):
+        self.test_info_single(custom=True)
+
     def test_missing_metadata(self):
         self._load_fixture_and_fetch('two_heads.svndump')
+        os.remove(self.repo.join('svn/branch_info'))
+        svncommands.updatemeta(self.ui(), self.repo, [])
+
         test_util.rmtree(self.repo.join('svn'))
         self.assertRaises(hgutil.Abort,
                           self.repo.svnmeta)
@@ -227,9 +255,18 @@ class UtilityTests(test_util.TestBase):
         self.assertEqual(self.repo['tip'].parents()[0].parents()[0], self.repo[0])
         self.assertNotEqual(beforerebasehash, self.repo['tip'].node())
 
-    def test_genignore(self):
+    def test_genignore(self, layout='auto'):
         """ Test generation of .hgignore file. """
-        repo = self._load_fixture_and_fetch('ignores.svndump', noupdate=False)
+        if layout == 'custom':
+            config = {
+                'hgsubversionbranch.default': 'trunk',
+                }
+        else:
+            config = {}
+        repo = self._load_fixture_and_fetch('ignores.svndump',
+                                            layout=layout,
+                                            noupdate=False,
+                                            config=config)
         u = self.ui()
         u.pushbuffer()
         svncommands.genignore(u, repo, self.wc_path)
@@ -237,13 +274,10 @@ class UtilityTests(test_util.TestBase):
                          '.hgignore\nsyntax:glob\nblah\notherblah\nbaz/magic\n')
 
     def test_genignore_single(self):
-        self._load_fixture_and_fetch('ignores.svndump', subdir='trunk')
-        hg.update(self.repo, 'tip')
-        u = self.ui()
-        u.pushbuffer()
-        svncommands.genignore(u, self.repo, self.wc_path)
-        self.assertMultiLineEqual(open(os.path.join(self.wc_path, '.hgignore')).read(),
-                               '.hgignore\nsyntax:glob\nblah\notherblah\nbaz/magic\n')
+        self.test_genignore(layout='single')
+
+    def test_genignore_custom(self):
+        self.test_genignore(layout='custom')
 
     def test_list_authors(self):
         repo_path = self.load_svndump('replace_trunk_with_branch.svndump')
@@ -263,16 +297,16 @@ class UtilityTests(test_util.TestBase):
                                 authors=author_path)
         self.assertMultiLineEqual(open(author_path).read(), 'Augie=\nevil=\n')
 
-    def test_svnverify(self, stupid=False):
+    def test_svnverify(self):
         repo, repo_path = self.load_and_fetch('binaryfiles.svndump',
-                                              noupdate=False, stupid=stupid)
-        ret = verify.verify(self.ui(), repo, [], rev=1, stupid=stupid)
+                                              noupdate=False)
+        ret = verify.verify(self.ui(), repo, [], rev=1)
         self.assertEqual(0, ret)
         repo_path = self.load_svndump('binaryfiles-broken.svndump')
         u = self.ui()
         u.pushbuffer()
         ret = verify.verify(u, repo, [test_util.fileurl(repo_path)],
-                            rev=1, stupid=stupid)
+                            rev=1)
         output = u.popbuffer()
         self.assertEqual(1, ret)
         output = re.sub(r'file://\S+', 'file://', output)
@@ -283,20 +317,16 @@ unexpected file: binary1
 missing file: binary3
 """, output)
 
-    def test_svnverify_stupid(self):
-        self.test_svnverify(True)
-
-    def test_corruption(self, stupid=False):
+    def test_corruption(self):
         SUCCESS = 0
         FAILURE = 1
 
         repo, repo_path = self.load_and_fetch('correct.svndump', layout='single',
-                                              subdir='', stupid=stupid)
+                                              subdir='')
 
         ui = self.ui()
 
-        self.assertEqual(SUCCESS, verify.verify(ui, self.repo, rev='tip',
-                                                stupid=stupid))
+        self.assertEqual(SUCCESS, verify.verify(ui, self.repo, rev='tip'))
 
         corrupt_source = test_util.fileurl(self.load_svndump('corrupt.svndump'))
 
@@ -322,9 +352,6 @@ missing file: binary3
 
         self.assertEqual((FAILURE, expected), (code, actual))
 
-    def test_corruption_stupid(self):
-        self.test_corruption(True)
-
     def test_svnrebuildmeta(self):
         otherpath = self.load_svndump('binaryfiles-broken.svndump')
         otherurl = test_util.fileurl(otherpath)
@@ -338,8 +365,3 @@ missing file: binary3
         # rebuildmeta --unsafe-skip-uuid-check with unrelated repo
         svncommands.rebuildmeta(self.ui(), repo=self.repo, args=[otherurl],
                                 unsafe_skip_uuid_check=True)
-        
-def suite():
-    all_tests = [unittest.TestLoader().loadTestsFromTestCase(UtilityTests),
-          ]
-    return unittest.TestSuite(all_tests)

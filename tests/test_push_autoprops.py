@@ -8,6 +8,8 @@ import test_util
 from hgsubversion import svnwrap
 
 class PushAutoPropsTests(test_util.TestBase):
+    obsolete_mode_tests = True
+
     def setUp(self):
         test_util.TestBase.setUp(self)
         repo, self.repo_path = self.load_and_fetch('emptyrepo.svndump')
@@ -20,7 +22,7 @@ class PushAutoPropsTests(test_util.TestBase):
             "*.py = test:prop=success\n")
         changes = [('test.py', 'test.py', 'echo hallo')]
         self.commitchanges(changes)
-        self.pushrevisions(True)
+        self.pushrevisions()
         prop_val = test_util.svnpropget(
             self.repo_path, "trunk/test.py", 'test:prop')
         self.assertEqual('success', prop_val)
@@ -100,8 +102,3 @@ class ParseAutoPropsTests(test_util.TestBase):
             'svn:eol-style': 'native',
             'svn:executable': 'true'},
             props)
-
-
-def suite():
-    return unittest.findTestCases(sys.modules[__name__])
-

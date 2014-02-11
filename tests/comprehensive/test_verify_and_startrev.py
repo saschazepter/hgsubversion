@@ -37,11 +37,16 @@ _skipstandard = set([
     'emptyrepo2.svndump',
 ])
 
-def _do_case(self, name, stupid, layout):
+def _do_case(self, name, layout):
     subdir = test_util.subdir.get(name, '')
-    repo, svnpath = self.load_and_fetch(name, subdir=subdir, stupid=stupid,
-                                        layout=layout)
-    assert len(self.repo) > 0
+    config = {}
+    for branch, path in test_util.custom.get(name, {}).iteritems():
+        config['hgsubversionbranch.%s' % branch] = path
+    repo, svnpath = self.load_and_fetch(name,
+                                        subdir=subdir,
+                                        layout=layout,
+                                        config=config)
+    assert test_util.repolen(self.repo) > 0
     for i in repo:
         ctx = repo[i]
         self.assertEqual(verify.verify(repo.ui, repo, rev=ctx.node(),
@@ -52,12 +57,12 @@ def _do_case(self, name, stupid, layout):
     # check a startrev clone
     if layout == 'single' and name not in _skipshallow:
         self.wc_path += '_shallow'
-        shallowrepo = self.fetch(svnpath, subdir=subdir, stupid=stupid,
+        shallowrepo = self.fetch(svnpath, subdir=subdir,
                                  layout='single', startrev='HEAD')
 
-        self.assertEqual(len(shallowrepo), 1,
+        self.assertEqual(test_util.repolen(shallowrepo), 1,
                          "shallow clone should have just one revision, not %d"
-                         % len(shallowrepo))
+                         % test_util.repolen(shallowrepo))
 
         fulltip = repo['tip']
         shallowtip = shallowrepo['tip']
@@ -85,32 +90,22 @@ def _do_case(self, name, stupid, layout):
             self.assertMultiLineEqual(fulltip[f].data(), shallowtip[f].data())
 
 
-def buildmethod(case, name, stupid, layout):
-    m = lambda self: self._do_case(case, stupid, layout)
+def buildmethod(case, name, layout):
+    m = lambda self: self._do_case(case, layout)
     m.__name__ = name
-    bits = case, stupid and 'stupid' or 'real', layout
-    m.__doc__ = 'Test verify on %s with %s replay. (%s)' % bits
+    m.__doc__ = 'Test verify on %s (%s)' % (case, layout)
     return m
 
-attrs = {'_do_case': _do_case}
+attrs = {'_do_case': _do_case, 'stupid_mode_tests': True}
 fixtures = [f for f in os.listdir(test_util.FIXTURES) if f.endswith('.svndump')]
 for case in fixtures:
     if case in _skipall:
         continue
     bname = 'test_' + case[:-len('.svndump')]
     if case not in _skipstandard:
-        attrs[bname] = buildmethod(case, bname, False, 'standard')
-        name = bname + '_stupid'
-        attrs[name] = buildmethod(case, name, True, 'standard')
-    name = bname + '_single'
-    attrs[name] = buildmethod(case, name, False, 'single')
-    # Disabled because the "stupid and real are the same" tests
-    # verify this plus even more.
-    # name = bname + '_single_stupid'
-    # attrs[name] = buildmethod(case, name, True, 'single')
+        attrs[bname] = buildmethod(case, bname, 'standard')
+    attrs[bname + '_single'] = buildmethod(case, bname + '_single', 'single')
+    if case in test_util.custom:
+        attrs[bname + '_custom'] = buildmethod(case, bname + '_custom', 'custom')
 
 VerifyTests = type('VerifyTests', (test_util.TestBase,), attrs)
-
-def suite():
-    all_tests = [unittest.TestLoader().loadTestsFromTestCase(VerifyTests)]
-    return unittest.TestSuite(all_tests)
