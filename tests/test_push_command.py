@@ -17,10 +17,14 @@ from mercurial import node
 from mercurial import revlog
 from mercurial import util as hgutil
 
+from hgsubversion import util
+
 import time
 
 
 class PushTests(test_util.TestBase):
+    obsolete_mode_tests = True
+
     def setUp(self):
         test_util.TestBase.setUp(self)
         self.repo_path = self.load_and_fetch('simple_branch.svndump')[1]
@@ -47,6 +51,54 @@ class PushTests(test_util.TestBase):
         hg.update(repo, repo['tip'].node())
         old_tip = repo['tip'].node()
         self.pushrevisions()
+        tip = self.repo['tip']
+        self.assertEqual(tip.node(), old_tip)
+
+    def test_push_add_of_added_upstream_gives_sane_error(self):
+        repo = self.repo
+        def file_callback(repo, memctx, path):
+            if path == 'adding_file':
+                return context.memfilectx(path=path,
+                                          data='foo',
+                                          islink=False,
+                                          isexec=False,
+                                          copied=False)
+            raise IOError()
+        p1 = repo['default'].node()
+        ctx = context.memctx(repo,
+                             (p1, node.nullid),
+                             'automated test',
+                             ['adding_file'],
+                             file_callback,
+                             'an_author',
+                             '2008-10-07 20:59:48 -0500',
+                             {'branch': 'default', })
+        new_hash = repo.commitctx(ctx)
+        hg.update(repo, repo['tip'].node())
+        old_tip = repo['tip'].node()
+        self.pushrevisions()
+        tip = self.repo['tip']
+        self.assertNotEqual(tip.node(), old_tip)
+
+        # This node adds the same file as the first one we added, and
+        # will be refused by the server for adding a file that already
+        # exists. We should respond with an error suggesting the user
+        # rebase.
+        ctx = context.memctx(repo,
+                             (p1, node.nullid),
+                             'automated test',
+                             ['adding_file'],
+                             file_callback,
+                             'an_author',
+                             '2008-10-07 20:59:48 -0500',
+                             {'branch': 'default', })
+        new_hash = repo.commitctx(ctx)
+        hg.update(repo, repo['tip'].node())
+        old_tip = repo['tip'].node()
+        try:
+          self.pushrevisions()
+        except hgutil.Abort, e:
+          assert "pull again and rebase" in str(e)
         tip = self.repo['tip']
         self.assertEqual(tip.node(), old_tip)
 
@@ -522,14 +574,110 @@ class PushTests(test_util.TestBase):
         self.pushrevisions()
         self.assertEqual(['alpha'], list(self.repo['tip'].manifest()))
 
-def suite():
-    test_classes = [PushTests, ]
-    all_tests = []
-    # This is the quickest hack I could come up with to load all the tests from
-    # both classes. Would love a patch that simplifies this without adding
-    # dependencies.
-    for tc in test_classes:
-        for attr in dir(tc):
-            if attr.startswith('test_'):
-                all_tests.append(tc(attr))
-    return unittest.TestSuite(all_tests)
+    def test_push_without_pushing_children(self):
+        '''
+        Verify that a push of a nontip node, keeps the tip child
+        on top of the pushed commit.
+        '''
+
+        oldlen = test_util.repolen(self.repo)
+        oldtiphash = self.repo['default'].node()
+
+        changes = [('gamma', 'gamma', 'sometext')]
+        newhash1 = self.commitchanges(changes)
+
+        changes = [('delta', 'delta', 'sometext')]
+        newhash2 = self.commitchanges(changes)
+
+        # push only the first commit
+        repo = self.repo
+        hg.update(repo, newhash1)
+        commands.push(repo.ui, repo)
+        self.assertEqual(test_util.repolen(self.repo), oldlen + 2)
+
+        # verify that the first commit is pushed, and the second is not
+        commit2 = self.repo['tip']
+        self.assertEqual(commit2.files(), ['delta', ])
+        self.assertEqual(util.getsvnrev(commit2), None)
+        commit1 = commit2.parents()[0]
+        self.assertEqual(commit1.files(), ['gamma', ])
+        prefix = 'svn:' + self.repo.svnmeta().uuid
+        self.assertEqual(util.getsvnrev(commit1),
+                         prefix + '/branches/the_branch@5')
+
+    def test_push_two_that_modify_same_file(self):
+        '''
+        Push performs a rebase if two commits touch the same file.
+        This test verifies that code path works.
+        '''
+
+        oldlen = test_util.repolen(self.repo)
+        oldtiphash = self.repo['default'].node()
+
+        changes = [('gamma', 'gamma', 'sometext')]
+        newhash = self.commitchanges(changes)
+        changes = [('gamma', 'gamma', 'sometext\n moretext'),
+                   ('delta', 'delta', 'sometext\n moretext'),
+                  ]
+        newhash = self.commitchanges(changes)
+
+        repo = self.repo
+        hg.update(repo, newhash)
+        commands.push(repo.ui, repo)
+        self.assertEqual(test_util.repolen(self.repo), oldlen + 2)
+
+        # verify that both commits are pushed
+        commit1 = self.repo['tip']
+        self.assertEqual(commit1.files(), ['delta', 'gamma'])
+
+        prefix = 'svn:' + self.repo.svnmeta().uuid
+        self.assertEqual(util.getsvnrev(commit1),
+                         prefix + '/branches/the_branch@6')
+        commit2 = commit1.parents()[0]
+        self.assertEqual(commit2.files(), ['gamma'])
+        self.assertEqual(util.getsvnrev(commit2),
+                         prefix + '/branches/the_branch@5')
+
+    def test_push_in_subdir(self, commit=True):
+        repo = self.repo
+        old_tip = repo['tip'].node()
+        def file_callback(repo, memctx, path):
+            if path == 'adding_file' or path == 'newdir/new_file':
+                testData = 'fooFirstFile'
+                if path == 'newdir/new_file':
+                    testData = 'fooNewFile'
+                return context.memfilectx(path=path,
+                                          data=testData,
+                                          islink=False,
+                                          isexec=False,
+                                          copied=False)
+            raise IOError(errno.EINVAL, 'Invalid operation: ' + path)
+        ctx = context.memctx(repo,
+                             (repo['default'].node(), node.nullid),
+                             'automated test',
+                             ['adding_file'],
+                             file_callback,
+                             'an_author',
+                             '2012-12-13 20:59:48 -0500',
+                             {'branch': 'default', })
+        new_hash = repo.commitctx(ctx)
+        p = os.path.join(repo.root, "newdir")
+        os.mkdir(p)
+        ctx = context.memctx(repo,
+                             (repo['default'].node(), node.nullid),
+                             'automated test',
+                             ['newdir/new_file'],
+                             file_callback,
+                             'an_author',
+                             '2012-12-13 20:59:48 -0500',
+                             {'branch': 'default', })
+        os.chdir(p)
+        new_hash = repo.commitctx(ctx)
+        hg.update(repo, repo['tip'].node())
+        self.pushrevisions()
+        tip = self.repo['tip']
+        self.assertNotEqual(tip.node(), old_tip)
+        self.assertEqual(p, os.getcwd())
+        self.assertEqual(tip['adding_file'].data(), 'fooFirstFile')
+        self.assertEqual(tip['newdir/new_file'].data(), 'fooNewFile')
+        self.assertEqual(tip.branch(), 'default')

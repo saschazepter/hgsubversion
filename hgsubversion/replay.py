@@ -6,6 +6,7 @@ from mercurial import node
 from mercurial import context
 from mercurial import util as hgutil
 
+import compathacks
 import svnexternals
 import util
 
@@ -50,16 +51,6 @@ def updateexternals(ui, meta, current):
                 current.set(path, data, False, False)
             else:
                 current.delete(path)
-
-
-def _safe_message(msg):
-  if msg:
-      try:
-          msg.decode('utf-8')
-      except UnicodeDecodeError:
-          # ancient svn failed to enforce utf8 encoding
-          return msg.decode('iso-8859-1').encode('utf-8')
-  return msg
 
 def convert_rev(ui, meta, svn, r, tbdelta, firstrun):
     try:
@@ -107,7 +98,8 @@ def _convert_rev(ui, meta, svn, r, tbdelta, firstrun):
         p, b = meta.split_branch_path(f)[:2]
         if b not in branch_batches:
             branch_batches[b] = []
-        branch_batches[b].append((p, f))
+        if p:
+            branch_batches[b].append((p, f))
 
     closebranches = {}
     for branch in tbdelta['branches'][1]:
@@ -142,7 +134,7 @@ def _convert_rev(ui, meta, svn, r, tbdelta, firstrun):
             tag = meta.get_path_tag(meta.remotename(branch))
             if (tag and tag not in meta.tags
                 and branch not in meta.branches
-                and branch not in meta.repo.branchtags()
+                and branch not in compathacks.branchset(meta.repo)
                 and not files):
                 continue
 
@@ -177,11 +169,10 @@ def _convert_rev(ui, meta, svn, r, tbdelta, firstrun):
                                       islink=islink, isexec=isexec,
                                       copied=copied)
 
-        message = _safe_message(rev.message)
         meta.mapbranch(extra)
         current_ctx = context.memctx(meta.repo,
                                      parents,
-                                     message or util.default_commit_msg(ui),
+                                     util.getmessage(ui, rev),
                                      files.keys(),
                                      filectxfn,
                                      meta.authors[rev.author],
@@ -204,21 +195,22 @@ def _convert_rev(ui, meta, svn, r, tbdelta, firstrun):
             continue
 
         parent_ctx = meta.repo.changectx(ha)
+        files = []
         def del_all_files(*args):
             raise IOError(errno.ENOENT, 'deleting all files')
 
-        # True here meant nuke all files, shouldn't happen with branch closing
-        if current.emptybranches[branch]: # pragma: no cover
-            raise hgutil.Abort('Empty commit to an open branch attempted. '
-                               'Please report this issue.')
+        # True here means nuke all files.  This happens when you
+        # replace a branch root with an empty directory
+        if current.emptybranches[branch]:
+            files = meta.repo[ha].files()
 
         extra = meta.genextra(rev.revnum, branch)
         meta.mapbranch(extra)
 
         current_ctx = context.memctx(meta.repo,
                                      (ha, node.nullid),
-                                     _safe_message(rev.message) or ' ',
-                                     [],
+                                     util.getmessage(ui, rev),
+                                     files,
                                      del_all_files,
                                      meta.authors[rev.author],
                                      date,

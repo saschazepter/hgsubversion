@@ -8,6 +8,7 @@ from mercurial import patch
 from mercurial import revlog
 from mercurial import util as hgutil
 
+import compathacks
 import svnwrap
 import svnexternals
 import util
@@ -606,12 +607,18 @@ def checkbranch(meta, r, branch):
             return None
     return branchtip
 
-def branches_in_paths(meta, tbdelta, paths, revnum, checkpath, listdir):
+def branches_in_paths(meta, tbdelta, paths, revnum, checkpath, listdir,
+                      firstrun):
     '''Given a list of paths, return mapping of all branches touched
     to their branch path.
     '''
     branches = {}
-    paths_need_discovery = []
+    if firstrun:
+        paths_need_discovery = [p for (p, t) in listdir('', revnum)
+                                if t == 'f']
+    else:
+        paths_need_discovery = []
+
     for p in paths:
         relpath, branch, branchpath = meta.split_branch_path(p)
         if relpath is not None:
@@ -628,50 +635,27 @@ def branches_in_paths(meta, tbdelta, paths, revnum, checkpath, listdir):
     if not paths_need_discovery:
         return branches
 
-    paths_need_discovery = [(len(p), p) for p in paths_need_discovery]
-    paths_need_discovery.sort()
-    paths_need_discovery = [p[1] for p in paths_need_discovery]
     actually_files = []
     while paths_need_discovery:
         p = paths_need_discovery.pop(0)
-        path_could_be_file = True
-        ind = 0
-        while ind < len(paths_need_discovery) and not paths_need_discovery:
-            if op.startswith(p):
-                path_could_be_file = False
-            ind += 1
-        if path_could_be_file:
-            if checkpath(p, revnum) == 'f':
-                actually_files.append(p)
-            # if there's a copyfrom_path and there were files inside that copyfrom,
-            # we need to detect those branches. It's a little thorny and slow, but
-            # seems to be the best option.
-            elif paths[p].copyfrom_path and not p.startswith('tags/'):
-                paths_need_discovery.extend(['%s/%s' % (p, x[0])
-                                             for x in listdir(p, revnum)
-                                             if x[1] == 'f'])
+        if checkpath(p, revnum) == 'f':
+            actually_files.append(p)
+        # if there's a copyfrom_path and there were files inside that copyfrom,
+        # we need to detect those branches. It's a little thorny and slow, but
+        # seems to be the best option.
+        elif paths[p].copyfrom_path and not meta.get_path_tag(p):
+            paths_need_discovery.extend(['%s/%s' % (p, x[0])
+                                         for x in listdir(p, revnum)
+                                         if x[1] == 'f'])
 
-        if not actually_files:
+    for path in actually_files:
+        if meta.get_path_tag(path):
             continue
+        fpath, branch, bpath = meta.split_branch_path(path, existing=False)
+        if bpath is None:
+            continue
+        branches[branch] = bpath
 
-        filepaths = [p.split('/') for p in actually_files]
-        filepaths = [(len(p), p) for p in filepaths]
-        filepaths.sort()
-        filepaths = [p[1] for p in filepaths]
-        while filepaths:
-            path = filepaths.pop(0)
-            parentdir = '/'.join(path[:-1])
-            filepaths = [p for p in filepaths if not '/'.join(p).startswith(parentdir)]
-            branchpath = meta.normalize(parentdir)
-            if branchpath.startswith('tags/'):
-                continue
-            branchname = meta.localname(branchpath)
-            if branchpath.startswith('trunk/'):
-                branches[meta.localname('trunk')] = 'trunk'
-                continue
-            if branchname and branchname.startswith('../'):
-                continue
-            branches[branchname] = branchpath
     return branches
 
 def convert_rev(ui, meta, svn, r, tbdelta, firstrun):
@@ -681,7 +665,7 @@ def convert_rev(ui, meta, svn, r, tbdelta, firstrun):
         raise hgutil.Abort('filemaps currently unsupported with stupid replay.')
 
     branches = branches_in_paths(meta, tbdelta, r.paths, r.revnum,
-                                 svn.checkpath, svn.list_files)
+                                 svn.checkpath, svn.list_files, firstrun)
     brpaths = branches.values()
     bad_branch_paths = {}
     for br, bp in branches.iteritems():
@@ -722,9 +706,9 @@ def convert_rev(ui, meta, svn, r, tbdelta, firstrun):
                     r.revnum, branch, exact=True)]
                 if util.isancestor(pctx, fromctx):
                     continue
-        closed = checkbranch(meta, r, branch)
-        if closed is not None:
-            deleted_branches[branch] = closed
+            closed = checkbranch(meta, r, branch)
+            if closed is not None:
+                deleted_branches[branch] = closed
 
     date = meta.fixdate(r.date)
     check_deleted_branches = set(tbdelta['branches'][1])
@@ -745,7 +729,8 @@ def convert_rev(ui, meta, svn, r, tbdelta, firstrun):
         # it, or we can force the existing fetch_branchrev() path. Do
         # the latter for now.
         incremental = (meta.revmap.oldest > 0 and
-                       parentctx.rev() != node.nullrev)
+                       parentctx.rev() != node.nullrev and
+                       not firstrun)
 
         if incremental:
             try:
@@ -789,7 +774,7 @@ def convert_rev(ui, meta, svn, r, tbdelta, firstrun):
             # svnmeta.committag(), we can skip the whole branch for now
             if (tag and tag not in meta.tags and
                 b not in meta.branches
-                and b not in meta.repo.branchtags()
+                and b not in compathacks.branchset(meta.repo)
                 and not files_touched):
                 continue
 
@@ -814,7 +799,7 @@ def convert_rev(ui, meta, svn, r, tbdelta, firstrun):
         meta.mapbranch(extra)
         current_ctx = context.memctx(meta.repo,
                                      [parentctx.node(), revlog.nullid],
-                                     r.message or util.default_commit_msg(ui),
+                                     util.getmessage(ui, r),
                                      files_touched,
                                      filectxfn,
                                      meta.authors[r.author],

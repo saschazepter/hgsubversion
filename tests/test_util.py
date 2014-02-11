@@ -22,9 +22,15 @@ from mercurial import dispatch as dispatchmod
 from mercurial import hg
 from mercurial import i18n
 from mercurial import node
+from mercurial import scmutil
 from mercurial import ui
 from mercurial import util
 from mercurial import extensions
+
+try:
+    from mercurial import obsolete
+except ImportError:
+    obsolete = None
 
 try:
     SkipTest = unittest.SkipTest
@@ -100,6 +106,87 @@ subdir = {'truncatedhistory.svndump': '/project2',
           'non_ascii_path_2.svndump': '/b%C3%B8b',
           'subdir_is_file_prefix.svndump': '/flaf',
           }
+# map defining the layouts of the fixtures we can use with custom layout
+# these are really popular layouts, so I gave them names
+trunk_only = {
+    'default': 'trunk',
+    }
+trunk_dev_branch = {
+    'default': 'trunk',
+    'dev_branch': 'branches/dev_branch',
+    }
+custom = {
+    'addspecial.svndump': {
+        'default': 'trunk',
+        'foo': 'branches/foo',
+        },
+    'binaryfiles.svndump': trunk_only,
+    'branch_create_with_dir_delete.svndump': trunk_dev_branch,
+    'branch_delete_parent_dir.svndump': trunk_dev_branch,
+    'branchmap.svndump': {
+        'default': 'trunk',
+        'badname': 'branches/badname',
+        'feature': 'branches/feature',
+        },
+    'branch_prop_edit.svndump': trunk_dev_branch,
+    'branch_rename_to_trunk.svndump': {
+        'default': 'trunk',
+        'dev_branch': 'branches/dev_branch',
+        'old_trunk': 'branches/old_trunk',
+        },
+    'copies.svndump': trunk_only,
+    'copybeforeclose.svndump': {
+        'default': 'trunk',
+        'test': 'branches/test'
+        },
+    'delentries.svndump': trunk_only,
+    'delete_restore_trunk.svndump': trunk_only,
+    'empty_dir_in_trunk_not_repo_root.svndump': trunk_only,
+    'executebit.svndump': trunk_only,
+    'filecase.svndump': trunk_only,
+    'file_not_in_trunk_root.svndump': trunk_only,
+    'project_name_with_space.svndump': trunk_dev_branch,
+    'pushrenames.svndump': trunk_only,
+    'rename_branch_parent_dir.svndump': trunk_dev_branch,
+    'renamedproject.svndump': {
+        'default': 'trunk',
+        'branch': 'branches/branch',
+        },
+    'renames.svndump': {
+        'default': 'trunk',
+        'branch1': 'branches/branch1',
+        },
+    'replace_branch_with_branch.svndump': {
+        'default': 'trunk',
+        'branch1': 'branches/branch1',
+        'branch2': 'branches/branch2',
+        },
+    'replace_trunk_with_branch.svndump': {
+        'default': 'trunk',
+        'test': 'branches/test',
+        },
+    'revert.svndump': trunk_only,
+    'siblingbranchfix.svndump': {
+        'default': 'trunk',
+        'wrongbranch': 'branches/wrongbranch',
+        },
+    'simple_branch.svndump': {
+        'default': 'trunk',
+        'the_branch': 'branches/the_branch',
+        },
+    'spaces-in-path.svndump': trunk_dev_branch,
+    'symlinks.svndump': trunk_only,
+    'truncatedhistory.svndump': trunk_only,
+    'unorderedbranch.svndump': {
+        'default': 'trunk',
+        'branch': 'branches/branch',
+        },
+    'unrelatedbranch.svndump': {
+        'default': 'trunk',
+        'branch1': 'branches/branch1',
+        'branch2': 'branches/branch2',
+        },
+}
 
 FIXTURES = os.path.join(os.path.abspath(os.path.dirname(__file__)),
                         'fixtures')
@@ -109,6 +196,16 @@ def getlocalpeer(repo):
     if isinstance(localrepo, bool):
         localrepo = repo
     return localrepo
+
+def repolen(repo):
+    """Naively calculate the amount of available revisions in a repository.
+
+    this is usually equal to len(repo) -- except in the face of
+    obsolete revisions.
+    """
+    # kind of nasty way of calculating the length, but fortunately,
+    # our test repositories tend to be rather small
+    return len([r for r in repo])
 
 def _makeskip(name, message):
     if SkipTest:
@@ -144,6 +241,18 @@ def requiresoption(option):
         raise TypeError('requiresoption takes a string argument')
     return decorator
 
+def requiresreplay(method):
+    '''Skip a test in stupid mode.'''
+    def test(self, *args, **kwargs):
+        if self.stupid:
+            if SkipTest:
+                raise SkipTest("test requires replay mode")
+        else:
+            return method(self, *args, **kwargs)
+
+    test.__name__ = method.__name__
+    return test
+
 def filtermanifest(manifest):
     return [f for f in manifest if f not in util.ignoredfiles]
 
@@ -170,7 +279,7 @@ def testui(stupid=False, layout='auto', startrev=0):
 
 def dispatch(cmd):
     cmd = getattr(dispatchmod, 'request', lambda x: x)(cmd)
-    dispatchmod.dispatch(cmd)
+    return dispatchmod.dispatch(cmd)
 
 def rmtree(path):
     # Read-only files cannot be removed under Windows
@@ -240,9 +349,93 @@ def svnpropget(repo_path, path, prop, rev='HEAD'):
         raise Exception('svn ls failed on %s: %r' % (path, stderr))
     return stdout.strip()
 
+
+def _obsolete_wrap(cls, name):
+    origfunc = getattr(cls, name)
+
+    if not name.startswith('test_') or not origfunc:
+        return
+
+    if not obsolete:
+        wrapper = _makeskip(name, 'obsolete not available')
+    else:
+        def wrapper(self, *args, **opts):
+            self.assertFalse(obsolete._enabled, 'obsolete was already active')
+
+            obsolete._enabled = True
+
+            try:
+                    origfunc(self, *args, **opts)
+                    self.assertTrue(obsolete._enabled, 'obsolete remains active')
+            finally:
+                obsolete._enabled = False
+
+    if not wrapper:
+        return
+
+    wrapper.__name__ = name + ' obsolete'
+    wrapper.__module__ = origfunc.__module__
+
+    if origfunc.__doc__:
+        firstline = origfunc.__doc__.strip().splitlines()[0]
+        wrapper.__doc__ = firstline + ' (obsolete)'
+
+    assert getattr(cls, wrapper.__name__, None) is None
+
+    setattr(cls, wrapper.__name__, wrapper)
+
+
+def _stupid_wrap(cls, name):
+    origfunc = getattr(cls, name)
+
+    if not name.startswith('test_') or not origfunc:
+        return
+
+    def wrapper(self, *args, **opts):
+        self.assertFalse(self.stupid, 'stupid mode was already active')
+
+        self.stupid = True
+
+        try:
+            origfunc(self, *args, **opts)
+        finally:
+            self.stupid = False
+
+    wrapper.__name__ = name + ' stupid'
+    wrapper.__module__ = origfunc.__module__
+
+    if origfunc.__doc__:
+        firstline = origfunc.__doc__.strip().splitlines()[0]
+        wrapper.__doc__ = firstline + ' (stupid)'
+
+    assert getattr(cls, wrapper.__name__, None) is None
+
+    setattr(cls, wrapper.__name__, wrapper)
+
+class TestMeta(type):
+    def __init__(cls, *args, **opts):
+        if cls.obsolete_mode_tests:
+            for origname in dir(cls):
+                _obsolete_wrap(cls, origname)
+
+        if cls.stupid_mode_tests:
+            for origname in dir(cls):
+                _stupid_wrap(cls, origname)
+
+        return super(TestMeta, cls).__init__(*args, **opts)
+
 class TestBase(unittest.TestCase):
+    __metaclass__ = TestMeta
+
+    obsolete_mode_tests = False
+    stupid_mode_tests = False
+
+    stupid = False
+
     def setUp(self):
         _verify_our_modules()
+        if 'hgsubversion' in sys.modules:
+            sys.modules['hgext_hgsubversion'] = sys.modules['hgsubversion']
 
         # the Python 2.7 default of 640 is obnoxiously low
         self.maxDiff = 4096
@@ -256,9 +449,12 @@ class TestBase(unittest.TestCase):
         self.oldwd = os.getcwd()
         self.tmpdir = tempfile.mkdtemp(
             'svnwrap_test', dir=os.environ.get('HGSUBVERSION_TEST_TEMP', None))
+        os.chdir(self.tmpdir)
         self.hgrc = os.path.join(self.tmpdir, '.hgrc')
         os.environ['HGRCPATH'] = self.hgrc
+        scmutil._rcpath = None
         rc = open(self.hgrc, 'w')
+        rc.write('[ui]\nusername=test-user\n')
         for l in '[extensions]', 'hgsubversion=':
             print >> rc, l
 
@@ -279,8 +475,11 @@ class TestBase(unittest.TestCase):
         setattr(ui.ui, self.patch[0].func_name, self.patch[1])
 
     def setup_svn_config(self, config):
-        with open(self.config_dir + '/config', 'w') as c:
+        c = open(self.config_dir + '/config', 'w')
+        try:
             c.write(config)
+        finally:
+            c.close()
 
     def _makerepopath(self):
         self.repocount += 1
@@ -299,8 +498,8 @@ class TestBase(unittest.TestCase):
 
         _verify_our_modules()
 
-    def ui(self, stupid=False, layout='auto'):
-        return testui(stupid, layout)
+    def ui(self, layout='auto'):
+        return testui(self.stupid, layout)
 
     def load_svndump(self, fixture_name):
         '''Loads an svnadmin dump into a fresh repo. Return the svn repo
@@ -333,7 +532,7 @@ class TestBase(unittest.TestCase):
             tarball.extract(entry, path)
         return path
 
-    def fetch(self, repo_path, subdir=None, stupid=False, layout='auto',
+    def fetch(self, repo_path, subdir=None, layout='auto',
             startrev=0, externals=None, noupdate=True, dest=None, rev=None,
             config=None):
         if layout == 'single':
@@ -352,7 +551,7 @@ class TestBase(unittest.TestCase):
             fileurl(projectpath),
             self.wc_path,
             ]
-        if stupid:
+        if self.stupid:
             cmd.append('--stupid')
         if noupdate:
             cmd.append('--noupdate')
@@ -364,7 +563,8 @@ class TestBase(unittest.TestCase):
         for k,v in reversed(sorted(config.iteritems())):
             cmd[:0] = ['--config', '%s=%s' % (k, v)]
 
-        dispatch(cmd)
+        r = dispatch(cmd)
+        assert not r, 'fetch of %s failed' % projectpath
 
         return hg.repository(testui(), self.wc_path)
 
@@ -409,11 +609,11 @@ class TestBase(unittest.TestCase):
     def repo(self):
         return hg.repository(testui(), self.wc_path)
 
-    def pushrevisions(self, stupid=False, expected_extra_back=0):
-        before = len(self.repo)
-        self.repo.ui.setconfig('hgsubversion', 'stupid', str(stupid))
+    def pushrevisions(self, expected_extra_back=0):
+        before = repolen(self.repo)
+        self.repo.ui.setconfig('hgsubversion', 'stupid', str(self.stupid))
         res = commands.push(self.repo.ui, self.repo)
-        after = len(self.repo)
+        after = repolen(self.repo)
         self.assertEqual(expected_extra_back, after - before)
         return res
 
@@ -530,7 +730,7 @@ class TestBase(unittest.TestCase):
         extensions.loadall(_ui)
         graphlog = extensions.find('graphlog')
         templ = """\
-changeset: {rev}:{node|short}
+changeset: {rev}:{node|short} (r{svnrev})
 branch:    {branches}
 tags:      {tags}
 summary:   {desc|firstline}
@@ -543,4 +743,3 @@ files:     {files}
 
     def draw(self, repo):
         sys.stdout.write(self.getgraph(repo))
-

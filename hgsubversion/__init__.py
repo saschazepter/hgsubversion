@@ -84,6 +84,10 @@ wrapcmds = { # cmd: generic, target, fixdoc, ppopts, opts
     'clone': (False, 'sources', True, True, [
         ('T', 'tagpaths', '',
          'list of paths to search for tags in Subversion repositories'),
+        ('', 'branchdir', '',
+         'path to search for branches in subversion repositories'),
+        ('', 'infix', '',
+         'path relative to trunk, branch an tag dirs to import'),
         ('A', 'authors', '',
          'file mapping Subversion usernames to Mercurial authors'),
         ('', 'filemap', '',
@@ -179,6 +183,9 @@ def reposetup(ui, repo):
         svnrepo.generate_repo_class(ui, repo)
         for tunnel in ui.configlist('hgsubversion', 'tunnels'):
             hg.schemes['svn+' + tunnel] = svnrepo
+
+    if revset and ui.configbool('hgsubversion', 'nativerevs'):
+        extensions.wrapfunction(revset, 'stringset', util.revset_stringset)
 
 _old_local = hg.schemes['file']
 def _lookup(url):

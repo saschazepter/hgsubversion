@@ -1,14 +1,22 @@
-import test_util
-
 import os
 import pickle
 import unittest
+import sys
+
+# wrapped in a try/except because of weirdness in how
+# run.py works as compared to nose.
+try:
+    import test_util
+except ImportError:
+    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+    import test_util
 
 from mercurial import context
 from mercurial import extensions
 from mercurial import hg
 from mercurial import ui
 
+from hgsubversion import compathacks
 from hgsubversion import svncommands
 from hgsubversion import svnmeta
 
@@ -23,16 +31,18 @@ expect_youngest_skew = [('file_mixed_with_branches.svndump', False, False),
 
 
 
-def _do_case(self, name, stupid, single):
+def _do_case(self, name, layout):
     subdir = test_util.subdir.get(name, '')
-    layout = 'auto'
-    if single:
-        layout = 'single'
-    repo, repo_path = self.load_and_fetch(name, subdir=subdir, stupid=stupid,
-                                          layout=layout)
-    assert len(self.repo) > 0
-    wc2_path = self.wc_path + '_clone'
+    single = layout == 'single'
     u = ui.ui()
+    config = {}
+    if layout == 'custom':
+        for branch, path in test_util.custom.get(name, {}).iteritems():
+            config['hgsubversionbranch.%s' % branch] = path
+            u.setconfig('hgsubversionbranch', branch, path)
+    repo, repo_path = self.load_and_fetch(name, subdir=subdir, layout=layout)
+    assert test_util.repolen(self.repo) > 0
+    wc2_path = self.wc_path + '_clone'
     src, dest = test_util.hgclone(u, self.wc_path, wc2_path, update=False)
     src = test_util.getlocalpeer(src)
     dest = test_util.getlocalpeer(dest)
@@ -53,7 +63,7 @@ def _do_case(self, name, stupid, single):
         # remove the wrapper
         context.changectx.children = origchildren
 
-    self._run_assertions(name, stupid, single, src, dest, u)
+    self._run_assertions(name, single, src, dest, u)
 
     wc3_path = self.wc_path + '_partial'
     src, dest = test_util.hgclone(u,
@@ -87,10 +97,10 @@ def _do_case(self, name, stupid, single):
         # remove the wrapper
         context.changectx.children = origchildren
 
-    self._run_assertions(name, stupid, single, srcrepo, dest, u)
+    self._run_assertions(name, single, srcrepo, dest, u)
 
 
-def _run_assertions(self, name, stupid, single, src, dest, u):
+def _run_assertions(self, name, single, src, dest, u):
 
     self.assertTrue(os.path.isdir(os.path.join(src.path, 'svn')),
                     'no .hg/svn directory in the source!')
@@ -105,12 +115,16 @@ def _run_assertions(self, name, stupid, single, src, dest, u):
         self.assertTrue(os.path.isfile(dtf), '%r is missing!' % tf)
         old, new = open(stf).read(), open(dtf).read()
         if tf == 'lastpulled' and (name,
-                                   stupid, single) in expect_youngest_skew:
+                                   self.stupid, single) in expect_youngest_skew:
             self.assertNotEqual(old, new,
                                 'rebuildmeta unexpected match on youngest rev!')
             continue
         self.assertMultiLineEqual(old, new, tf + ' differs')
-        self.assertEqual(src.branchtags(), dest.branchtags())
+        try:
+          self.assertEqual(src.branchmap(), dest.branchmap())
+        except AttributeError:
+          # hg 2.8 and earlier
+          self.assertEqual(src.branchtags(), dest.branchtags())
     srcbi = pickle.load(open(os.path.join(src.path, 'svn', 'branch_info')))
     destbi = pickle.load(open(os.path.join(dest.path, 'svn', 'branch_info')))
     self.assertEqual(sorted(srcbi.keys()), sorted(destbi.keys()))
@@ -130,15 +144,11 @@ def _run_assertions(self, name, stupid, single, src, dest, u):
             self.assertEqual(srcinfo[2], destinfo[2])
 
 
-def buildmethod(case, name, stupid, single):
-    m = lambda self: self._do_case(case, stupid, single)
+def buildmethod(case, name, layout):
+    m = lambda self: self._do_case(case, layout)
     m.__name__ = name
-    m.__doc__ = ('Test rebuildmeta on %s with %s replay. (%s)' %
-                 (case,
-                  (stupid and 'stupid') or 'real',
-                  (single and 'single') or 'standard',
-                  )
-                 )
+    m.__doc__ = ('Test rebuildmeta on %s (%s)' %
+                 (case, layout))
     return m
 
 
@@ -149,22 +159,18 @@ skip = set([
 
 attrs = {'_do_case': _do_case,
          '_run_assertions': _run_assertions,
+         'stupid_mode_tests': True,
          }
 for case in [f for f in os.listdir(test_util.FIXTURES) if f.endswith('.svndump')]:
     # this fixture results in an empty repository, don't use it
     if case in skip:
         continue
     bname = 'test_' + case[:-len('.svndump')]
-    attrs[bname] = buildmethod(case, bname, False, False)
-    name = bname + '_stupid'
-    attrs[name] = buildmethod(case, name, True, False)
-    name = bname + '_single'
-    attrs[name] = buildmethod(case, name, False, True)
+    attrs[bname] = buildmethod(case, bname, 'auto')
+    attrs[bname + '_single'] = buildmethod(case, bname + '_single', 'single')
+    if case in test_util.custom:
+            attrs[bname + '_custom'] = buildmethod(case,
+                                                   bname + '_custom',
+                                                   'single')
 
 RebuildMetaTests = type('RebuildMetaTests', (test_util.TestBase,), attrs)
-
-
-def suite():
-    all_tests = [unittest.TestLoader().loadTestsFromTestCase(RebuildMetaTests),
-          ]
-    return unittest.TestSuite(all_tests)

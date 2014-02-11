@@ -1,14 +1,20 @@
+import cPickle as pickle
 import errno
 import re
 import os
 import urllib
-from collections import deque
 
 from mercurial import cmdutil
 from mercurial import error
 from mercurial import hg
 from mercurial import node
+from mercurial import repair
 from mercurial import util as hgutil
+
+try:
+    from collections import deque
+except:
+    from mercurial.util import deque
 
 try:
     from mercurial import revset
@@ -79,6 +85,14 @@ def islocalrepo(url):
         path = path.rsplit('/', 1)[0]
     return False
 
+def strip(ui, repo, changesets, *args , **opts):
+    try:
+        repair.strip(ui, repo, changesets, *args, **opts)
+    except TypeError:
+        # only 2.1.2 and later allow strip to take a list of nodes
+        for changeset in changesets:
+            repair.strip(ui, repo, changeset, *args, **opts)
+
 
 def version(ui):
     """Return version information if available."""
@@ -128,16 +142,20 @@ def save_string(file_path, string):
     f.write(str(string))
     f.close()
 
+def pickle_atomic(data, file_path):
+    """pickle some data to a path atomically.
 
-# TODO remove when we drop 1.3 support
-def progress(ui, *args, **kwargs):
-    if getattr(ui, 'progress', False):
-        return ui.progress(*args, **kwargs)
-
-# TODO remove when we drop 1.5 support
-remoteui = getattr(cmdutil, 'remoteui', getattr(hg, 'remoteui', False))
-if not remoteui:
-    raise ImportError('Failed to import remoteui')
+    This is present because I kept corrupting my revmap by managing to hit ^C
+    during the pickle of that file.
+    """
+    f = hgutil.atomictempfile(file_path, 'w+b', 0644)
+    pickle.dump(data, f)
+    # Older versions of hg have .rename() instead of .close on
+    # atomictempfile.
+    if getattr(hgutil.atomictempfile, 'rename', False):
+        f.rename()
+    else:
+        f.close()
 
 def parseurl(url, heads=[]):
     parsed = hg.parseurl(url, heads)
@@ -202,8 +220,19 @@ def outgoing_common_and_heads(repo, reverse_map, sourcerev):
         return ([sourcecx.node()], [sourcerev])
     return ([sourcerev], [sourcerev]) # nothing outgoing
 
-def default_commit_msg(ui):
-    return ui.config('hgsubversion', 'defaultmessage', '')
+def getmessage(ui, rev):
+    msg = rev.message
+
+    if msg:
+        try:
+            msg.decode('utf-8')
+            return msg
+
+        except UnicodeDecodeError:
+            # ancient svn failed to enforce utf8 encoding
+            return msg.decode('iso-8859-1').encode('utf-8')
+    else:
+        return ui.config('hgsubversion', 'defaultmessage', '')
 
 def describe_commit(ui, h, b):
     ui.note(' committed to "%s" as %s\n' % ((b or 'default'), node.short(h)))
@@ -340,6 +369,11 @@ revsets = {
     'svnrev': revset_svnrev,
 }
 
+def revset_stringset(orig, repo, subset, x):
+    if x.startswith('r') and x[1:].isdigit():
+        return revset_svnrev(repo, subset, ('string', x[1:]))
+    return orig(repo, subset, x)
+
 def getfilestoresize(ui):
     """Return the replay or stupid file memory store size in megabytes or -1"""
     size = ui.configint('hgsubversion', 'filestoresize', 200)
@@ -349,35 +383,6 @@ def getfilestoresize(ui):
         size = -1
     return size
 
-# Copy-paste from mercurial.util to avoid having to deal with backward
-# compatibility, plus the cache size is configurable.
-def lrucachefunc(func, size):
-    '''cache most recent results of function calls'''
-    cache = {}
-    order = deque()
-    if func.func_code.co_argcount == 1:
-        def f(arg):
-            if arg not in cache:
-                if len(cache) > size:
-                    del cache[order.popleft()]
-                cache[arg] = func(arg)
-            else:
-                order.remove(arg)
-            order.append(arg)
-            return cache[arg]
-    else:
-        def f(*args):
-            if args not in cache:
-                if len(cache) > size:
-                    del cache[order.popleft()]
-                cache[args] = func(*args)
-            else:
-                order.remove(args)
-            order.append(args)
-            return cache[args]
-
-    return f
-
 def parse_revnum(svnrepo, r):
     try:
         return int(r or 0)
@@ -385,5 +390,4 @@ def parse_revnum(svnrepo, r):
         if isinstance(r, str) and r.lower() in ('head', 'tip'):
             return svnrepo.last_changed_rev
         else:
-            # TODO: use error.RepoLookupError when we drop 1.3?
-            raise hgutil.Abort("unknown Subversion revision %r" % r)
+            raise error.RepoLookupError("unknown Subversion revision %r" % r)
