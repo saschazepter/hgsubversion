@@ -122,7 +122,7 @@ class svnremoterepo(peerrepository):
         if path is None:
             path = self.ui.config('paths', 'default')
         if not path:
-            raise hgutil.Abort('no Subversion URL specified')
+            raise hgutil.Abort('no Subversion URL specified. Expect[path] default= or [path] default-push= SVN URL entries in hgrc.')
         self.path = path
         self.capabilities = set(['lookup', 'subversion'])
         pws = self.ui.config('hgsubversion', 'password_stores', None)
@@ -156,7 +156,8 @@ class svnremoterepo(peerrepository):
     @propertycache
     def svn(self):
         try:
-            return svnwrap.SubversionRepo(*self.svnauth, password_stores=self.password_stores)
+            auth = self.svnauth
+            return svnwrap.SubversionRepo(auth[0], auth[1], auth[2], password_stores=self.password_stores)
         except svnwrap.SubversionConnectionException, e:
             self.ui.traceback()
             raise hgutil.Abort(e)
@@ -218,7 +219,7 @@ class SubversionPrompt(object):
             username = default_username
         else:
             username = self.ui.prompt('Username: ', default='')
-        password = self.ui.getpass('Password for \'%s\': ' % (username,), default='')
+        password = self.ui.getpass("Password for '%s': " % (username,), default='')
         return (username, password, bool(may_save))
 
     def ssl_client_cert(self, realm, may_save, pool=None):
@@ -227,7 +228,7 @@ class SubversionPrompt(object):
         return (cert_file, bool(may_save))
 
     def ssl_client_cert_pw(self, realm, may_save, pool=None):
-        password = self.ui.getpass('Passphrase for \'%s\': ' % (realm,), default='')
+        password = self.ui.getpass("Passphrase for '%s': " % (realm,), default='')
         return (password, bool(may_save))
 
     def insecure(fn):
@@ -252,7 +253,7 @@ class SubversionPrompt(object):
 
     @insecure
     def ssl_server_trust(self, realm, failures, cert_info, may_save, pool=None):
-        msg = 'Error validating server certificate for \'%s\':\n' % (realm,)
+        msg = "Error validating server certificate for '%s':\n" % (realm,)
         if failures & svnwrap.SSL_UNKNOWNCA:
             msg += (
                     ' - The certificate is not issued by a trusted authority. Use the\n'
@@ -293,4 +294,3 @@ class SubversionPrompt(object):
         else:
             creds = None
         return creds
-

@@ -10,23 +10,8 @@ from mercurial import node
 
 import util
 import maps
+import layouts
 import editor
-
-
-def pickle_atomic(data, file_path):
-    """pickle some data to a path atomically.
-
-    This is present because I kept corrupting my revmap by managing to hit ^C
-    during the pickle of that file.
-    """
-    f = hgutil.atomictempfile(file_path, 'w+b', 0644)
-    pickle.dump(data, f)
-    # Older versions of hg have .rename() instead of .close on
-    # atomictempfile.
-    if getattr(hgutil.atomictempfile, 'rename', False):
-        f.rename()
-    else:
-        f.close()
 
 
 class SVNMeta(object):
@@ -49,7 +34,6 @@ class SVNMeta(object):
 
         author_host = self.ui.config('hgsubversion', 'defaulthost', uuid)
         authors = util.configpath(self.ui, 'authormap')
-        tag_locations = self.ui.configlist('hgsubversion', 'tagpaths', ['tags'])
         self.usebranchnames = self.ui.configbool('hgsubversion',
                                                  'usebranchnames', True)
         branchmap = util.configpath(self.ui, 'branchmap')
@@ -63,23 +47,9 @@ class SVNMeta(object):
             f.close()
         self.prevbranches = dict(self.branches)
         self.tags = maps.Tags(repo)
-        if os.path.exists(self.tag_locations_file):
-            f = open(self.tag_locations_file)
-            self.tag_locations = pickle.load(f)
-            f.close()
-        else:
-            self.tag_locations = tag_locations
-        if os.path.exists(self.layoutfile):
-            f = open(self.layoutfile)
-            self._layout = f.read().strip()
-            f.close()
-            self.repo.ui.setconfig('hgsubversion', 'layout', self._layout)
-        else:
-            self._layout = None
-        pickle_atomic(self.tag_locations, self.tag_locations_file)
-        # ensure nested paths are handled properly
-        self.tag_locations.sort()
-        self.tag_locations.reverse()
+        self._layout = layouts.detect.layout_from_file(self.meta_data_dir,
+                                                       ui=self.repo.ui)
+        self._layoutobj = None
 
         self.authors = maps.AuthorMap(self.ui, self.authors_file,
                                  defaulthost=author_host)
@@ -107,14 +77,15 @@ class SVNMeta(object):
         # resolved into something other than auto before this ever
         # gets called
         if not self._layout or self._layout == 'auto':
-            lo = self.repo.ui.config('hgsubversion', 'layout', default='auto')
-            if lo == 'auto':
-                raise hgutil.Abort('layout not yet determined')
-            self._layout = lo
-            f = open(self.layoutfile, 'w')
-            f.write(self._layout)
-            f.close()
+            self._layout = layouts.detect.layout_from_config(self.repo.ui)
+            layouts.persist.layout_to_file(self.meta_data_dir, self._layout)
         return self._layout
+
+    @property
+    def layoutobj(self):
+        if not self._layoutobj:
+            self._layoutobj = layouts.layout_from_name(self.layout, self.ui)
+        return self._layoutobj
 
     @property
     def editor(self):
@@ -186,10 +157,6 @@ class SVNMeta(object):
         return os.path.join(self.meta_data_dir, 'branch_info')
 
     @property
-    def tag_locations_file(self):
-        return os.path.join(self.meta_data_dir, 'tag_locations')
-
-    @property
     def authors_file(self):
         return os.path.join(self.meta_data_dir, 'authors')
 
@@ -206,10 +173,6 @@ class SVNMeta(object):
         # called tag-renames for backwards compatibility
         return os.path.join(self.meta_data_dir, 'tag-renames')
 
-    @property
-    def layoutfile(self):
-        return os.path.join(self.meta_data_dir, 'layout')
-
     def fixdate(self, date):
         if date is not None:
             date = date.replace('T', ' ').replace('Z', '').split('.')[0]
@@ -223,27 +186,15 @@ class SVNMeta(object):
         '''Save the Subversion metadata. This should really be called after
         every revision is created.
         '''
-        pickle_atomic(self.branches, self.branch_info_file)
+        util.pickle_atomic(self.branches, self.branch_info_file)
 
     def localname(self, path):
         """Compute the local name for a branch located at path.
         """
-        if self.layout == 'single':
-            return 'default'
-        if path == 'trunk':
-            return None
-        elif path.startswith('branches/'):
-            return path[len('branches/'):]
-        return  '../%s' % path
+        return self.layoutobj.localname(path)
 
     def remotename(self, branch):
-        if self.layout == 'single':
-            return ''
-        if branch == 'default' or branch is None:
-            return 'trunk'
-        elif branch.startswith('../'):
-            return branch[3:]
-        return 'branches/%s' % branch
+        return self.layoutobj.remotename(branch)
 
     def genextra(self, revnum, branch):
         extra = {}
@@ -253,17 +204,10 @@ class SVNMeta(object):
         if subdir and subdir[0] != '/':
             subdir = '/' + subdir
 
-        if self.layout == 'single':
-            path = subdir or '/'
-        else:
-            branchpath = 'trunk'
-            if branch:
-                extra['branch'] = branch
-                if branch.startswith('../'):
-                    branchpath = branch[3:]
-                else:
-                    branchpath = 'branches/%s' % branch
-            path = '%s/%s' % (subdir, branchpath)
+        path = self.layoutobj.remotepath(branch, subdir)
+
+        if branch:
+            extra['branch'] = branch
 
         extra['convert_revision'] = 'svn:%(uuid)s%(path)s@%(rev)s' % {
             'uuid': self.uuid,
@@ -300,6 +244,10 @@ class SVNMeta(object):
             path = path[1:]
         return path
 
+    @property
+    def taglocations(self):
+        return self.layoutobj.taglocations(self.meta_data_dir)
+
     def get_path_tag(self, path):
         """If path could represent the path to a tag, returns the
         potential (non-empty) tag name. Otherwise, returns None
@@ -307,14 +255,8 @@ class SVNMeta(object):
         Note that it's only a tag if it was copied from the path '' in a branch
         (or tag) we have, for our purposes.
         """
-        if self.layout != 'single':
-            path = self.normalize(path)
-            for tagspath in self.tag_locations:
-                if path.startswith(tagspath + '/'):
-                    tag = path[len(tagspath) + 1:]
-                    if tag:
-                        return tag
-        return None
+        path = self.normalize(path)
+        return self.layoutobj.get_path_tag(path, self.taglocations)
 
     def split_branch_path(self, path, existing=True):
         """Figure out which branch inside our repo this path represents, and
@@ -335,8 +277,6 @@ class SVNMeta(object):
         relative to our subdirectory.
         """
         path = self.normalize(path)
-        if self.layout == 'single':
-            return (path, None, '')
         tag = self.get_path_tag(path)
         if tag:
             # consider the new tags when dispatching entries
@@ -355,38 +295,34 @@ class SVNMeta(object):
                 svrpath = path[:-(len(brpath)+1)]
             ln = self.localname(svrpath)
             return brpath, ln, svrpath
-        test = ''
-        path_comps = path.split('/')
-        while self.localname(test) not in self.branches and len(path_comps):
-            if not test:
-                test = path_comps.pop(0)
-            else:
-                test += '/%s' % path_comps.pop(0)
-        if self.localname(test) in self.branches:
-            return path[len(test)+1:], self.localname(test), test
-        if existing:
+
+        branch_path, local_path = self.layoutobj.split_remote_name(path,
+                                                                   self.branches)
+        branch_name = self.layoutobj.localname(branch_path)
+
+        if branch_name in self.branches:
+            return local_path, branch_name, branch_path
+        elif existing or (branch_name and branch_name.startswith('../')):
             return None, None, None
-        if path == 'trunk' or path.startswith('trunk/'):
-            path = '/'.join(path.split('/')[1:])
-            test = 'trunk'
-        elif path.startswith('branches/'):
-            elts = path.split('/')
-            test = '/'.join(elts[:2])
-            path = '/'.join(elts[2:])
         else:
-            path = test.split('/')[-1]
-            test = '/'.join(test.split('/')[:-1])
-        ln = self.localname(test)
-        if ln and ln.startswith('../'):
-            return None, None, None
-        return path, ln, test
+            return local_path, branch_name, branch_path
 
     def _determine_parent_branch(self, p, src_path, src_rev, revnum):
         if src_path is not None:
             src_file, src_branch = self.split_branch_path(src_path)[:2]
             src_tag = self.get_path_tag(src_path)
             if src_tag or src_file == '':
-                ln = self.localname(p)
+                brpath, fpath = self.layoutobj.split_remote_name(p,
+                                                                 self.branches)
+                # we'll sometimes get a different path out of
+                # split_remate_name than the one we passed in, but
+                # only for the root of a branch, since the svn copies
+                # of those will sometimes be of parent directories of
+                # our root
+                if fpath == '':
+                    ln = self.localname(brpath)
+                else:
+                    ln = self.localname(p)
                 if src_tag in self.tags:
                     changeid = self.tags[src_tag]
                     src_rev, src_branch = self.get_source_rev(changeid)[:2]
@@ -480,8 +416,6 @@ class SVNMeta(object):
             raise KeyError('%s has no conversion record' % ctx)
         branchpath, revnum = extra['convert_revision'][40:].rsplit('@', 1)
         branch = self.localname(self.normalize(branchpath))
-        if self.layout == 'single':
-            branchpath = ''
         if branchpath and branchpath[0] == '/':
             branchpath = branchpath[1:]
         return int(revnum), branch, branchpath
@@ -495,9 +429,6 @@ class SVNMeta(object):
         values are the place the branch came from. The deletions are
         sets of the deleted branches.
         """
-        if self.layout == 'single':
-            return {'branches': ({None: (None, 0, -1), }, set()),
-                    }
         paths = revision.paths
         added_branches = {}
         # Reset the tags delta before detecting the new one, and take
@@ -559,8 +490,8 @@ class SVNMeta(object):
             #    action of 'D'. We mark the branch as deleted.
             # 5. It's the parent directory of one or more
             #    already-known branches, so we mark them as deleted.
-            # 6. It's a branch being replaced by another branch - the
-            #    action will be 'R'.
+            # 6. It's a branch being replaced by another branch or a new
+            #    directory - the action will be 'R'.
             fi, br = self.split_branch_path(p)[:2]
             if fi is not None:
                 if fi == '':
@@ -570,15 +501,16 @@ class SVNMeta(object):
                         # Check the replacing source is not an ancestor
                         # branch of the branch being replaced, this
                         # would just be a revert.
-                        cfi, cbr = self.split_branch_path(
-                            paths[p].copyfrom_path, paths[p].copyfrom_rev)[:2]
-                        if cfi == '':
-                            cctx = self.repo[self.get_parent_revision(
-                                paths[p].copyfrom_rev + 1, cbr)]
-                            ctx = self.repo[self.get_parent_revision(
-                                revision.revnum, br)]
-                            if cctx and util.isancestor(ctx, cctx):
-                                continue
+                        if paths[p].copyfrom_path:
+                            cfi, cbr = self.split_branch_path(
+                                paths[p].copyfrom_path, paths[p].copyfrom_rev)[:2]
+                            if cfi == '':
+                                cctx = self.repo[self.get_parent_revision(
+                                    paths[p].copyfrom_rev + 1, cbr)]
+                                ctx = self.repo[self.get_parent_revision(
+                                    revision.revnum, br)]
+                                if cctx and util.isancestor(ctx, cctx):
+                                    continue
                         parent = self._determine_parent_branch(
                             p, paths[p].copyfrom_path, paths[p].copyfrom_rev,
                             revision.revnum)
@@ -655,7 +587,7 @@ class SVNMeta(object):
             revnum, branch = self.get_source_rev(ctx=parentctx)[:2]
         ctx = context.memctx(self.repo,
                              (parentctx.node(), node.nullid),
-                             rev.message or util.default_commit_msg(self.ui),
+                             util.getmessage(self.ui, rev),
                              ['.hgtags', ],
                              hgtagsfn,
                              self.authors[rev.author],
@@ -720,7 +652,7 @@ class SVNMeta(object):
 
             ctx = context.memctx(self.repo,
                                  (parent.node(), node.nullid),
-                                 rev.message or ' ',
+                                 util.getmessage(self.ui, rev),
                                  ['.hgtags'],
                                  fctxfun,
                                  self.authors[rev.author],
@@ -742,7 +674,7 @@ class SVNMeta(object):
         self.mapbranch(extra, True)
         ctx = context.memctx(self.repo,
                              (node, revlog.nullid),
-                             rev.message or util.default_commit_msg(self.ui),
+                             util.getmessage(self.ui, rev),
                              [],
                              lambda x, y, z: None,
                              self.authors[rev.author],

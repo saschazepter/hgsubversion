@@ -37,16 +37,18 @@ def version():
     return '%d.%d.%d' % current_bindings, 'SWIG'
 
 # exported values
+ERR_FS_ALREADY_EXISTS = core.SVN_ERR_FS_ALREADY_EXISTS
 ERR_FS_CONFLICT = core.SVN_ERR_FS_CONFLICT
 ERR_FS_NOT_FOUND = core.SVN_ERR_FS_NOT_FOUND
 ERR_FS_TXN_OUT_OF_DATE = core.SVN_ERR_FS_TXN_OUT_OF_DATE
 ERR_INCOMPLETE_DATA = core.SVN_ERR_INCOMPLETE_DATA
 ERR_RA_DAV_REQUEST_FAILED = core.SVN_ERR_RA_DAV_REQUEST_FAILED
-SSL_UNKNOWNCA = core.SVN_AUTH_SSL_UNKNOWNCA
+ERR_REPOS_HOOK_FAILURE = core.SVN_ERR_REPOS_HOOK_FAILURE
 SSL_CNMISMATCH = core.SVN_AUTH_SSL_CNMISMATCH
-SSL_NOTYETVALID = core.SVN_AUTH_SSL_NOTYETVALID
 SSL_EXPIRED = core.SVN_AUTH_SSL_EXPIRED
+SSL_NOTYETVALID = core.SVN_AUTH_SSL_NOTYETVALID
 SSL_OTHER = core.SVN_AUTH_SSL_OTHER
+SSL_UNKNOWNCA = core.SVN_AUTH_SSL_UNKNOWNCA
 SubversionException = core.SubversionException
 Editor = delta.Editor
 
@@ -366,11 +368,20 @@ class SubversionRepo(object):
     def commit(self, paths, message, file_data, base_revision, addeddirs,
                deleteddirs, properties, copies):
         """Commits the appropriate targets from revision in editor's store.
+
+        Return the committed revision as a common.Revision instance.
         """
         self.init_ra_and_client()
-        commit_info = []
-        def commit_cb(_commit_info, pool):
-            commit_info.append(_commit_info)
+
+        def commit_cb(commit_info, pool):
+            # disregard commit_info.post_commit_err for now
+            r = common.Revision(commit_info.revision, commit_info.author,
+                                message, commit_info.date)
+
+            committedrev.append(r)
+
+        committedrev = []
+
         editor, edit_baton = ra.get_commit_editor2(self.ra,
                                                    message,
                                                    commit_cb,
@@ -436,12 +447,15 @@ class SubversionRepo(object):
         try:
             delta.path_driver(editor, edit_baton, base_revision, paths, driver_cb,
                               self.pool)
-            editor.close_edit(edit_baton, self.pool)
         except:
             # If anything went wrong on the preceding lines, we should
             # abort the in-progress transaction.
             editor.abort_edit(edit_baton, self.pool)
             raise
+
+        editor.close_edit(edit_baton, self.pool)
+
+        return committedrev.pop()
 
     def get_replay(self, revision, editor, oldest_rev_i_have=0):
         # this method has a tendency to chew through RAM if you don't re-init
@@ -469,9 +483,14 @@ class SubversionRepo(object):
                 sf = f[l:]
                 if links[f] or execs[f]:
                     continue
-                props = self.list_props(sf, revision)
-                links[f] = props.get('svn:special') == '*'
-                execs[f] = props.get('svn:executable') == '*'
+                # The list_props API creates a new connection and then
+                # calls get_file for the remote file case.  It also
+                # creates a new connection to the subversion server
+                # every time it's called.  As a result, it's actually
+                # *cheaper* to call get_file than list_props here
+                data, mode = self.get_file(sf, revision)
+                links[f] = mode == 'l'
+                execs[f] = mode == 'x'
 
     def get_revision(self, revision, editor):
         ''' feed the contents of the given revision to the given editor '''

@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import optparse
 import os
 import sys
@@ -19,6 +21,7 @@ def tests():
     import test_fetch_symlinks
     import test_fetch_truncated
     import test_hooks
+    import test_svn_pre_commit_hooks
     import test_pull
     import test_pull_fallback
     import test_push_command
@@ -26,20 +29,21 @@ def tests():
     import test_push_dirs
     import test_push_eol
     import test_push_autoprops
-    import test_rebuildmeta
     import test_single_dir_clone
+    import test_single_dir_push
     import test_svnwrap
     import test_tags
     import test_template_keywords
     import test_utility_commands
     import test_unaffected_core
-    import test_updatemeta
     import test_urls
 
     sys.path.append(os.path.dirname(__file__))
     sys.path.append(os.path.join(os.path.dirname(__file__), 'comprehensive'))
 
+    import test_rebuildmeta
     import test_stupid_pull
+    import test_updatemeta
     import test_verify_and_startrev
 
     return locals()
@@ -100,21 +104,24 @@ if __name__ == '__main__':
 
     args = [i.split('.py')[0].replace('-', '_') for i in args]
 
+    loader = unittest.TestLoader()
+    suite = unittest.TestSuite()
+
     if not args:
         check = lambda x: options.comprehensive or not comprehensive(x)
-        mods = [m for (n, m) in sorted(all_tests.iteritems()) if check(m)]
-        suite = [m.suite() for m in mods]
+        suite.addTests(loader.loadTestsFromModule(m)
+                       for (n, m) in sorted(all_tests.iteritems())
+                       if check(m))
     else:
-        suite = []
         for arg in args:
             if arg == 'test_util':
                 continue
             elif arg not in all_tests:
                 print >> sys.stderr, 'test module %s not available' % arg
             else:
-                suite.append(all_tests[arg].suite())
+                suite.addTest(loader.loadTestsFromModule(all_tests[arg]))
 
     runner = unittest.TextTestRunner(**testargs)
-    result = runner.run(unittest.TestSuite(suite))
+    result = runner.run(suite)
     if not result.wasSuccessful():
         sys.exit(1)

@@ -191,7 +191,7 @@ class HgEditor(svnwrap.Editor):
         # A mapping of file paths to batons
         self._openpaths = {}
         self._deleted = set()
-        self._getctx = util.lrucachefunc(self.repo.changectx, 3)
+        self._getctx = hgutil.lrucachefunc(self.repo.changectx)
         # A stack of opened directory (baton, path) pairs.
         self._opendirs = []
         self._missing = set()
@@ -401,6 +401,10 @@ class HgEditor(svnwrap.Editor):
         br_path, branch = self.meta.split_branch_path(path)[:2]
         if br_path is not None:
             if not copyfrom_path and not br_path:
+                # This handles the case where a branch root is
+                # replaced without copy info.  It will show up as a
+                # deletion and then an add.
+                self.meta.closebranches.discard(branch)
                 self.current.emptybranches[branch] = True
             else:
                 self.current.emptybranches[branch] = False
@@ -570,13 +574,16 @@ class HgEditor(svnwrap.Editor):
 
                     msg += _TXDELT_WINDOW_HANDLER_FAILURE_MSG
                     e.args = (msg,) + others
-                    raise e
+
+                    # re-raising ensures that we show the full stack trace
+                    raise
 
                 # window being None means commit this file
                 if not window:
                     self._openfiles[file_baton] = (
                         path, target, isexec, islink, copypath)
             except svnwrap.SubversionException, e: # pragma: no cover
+                self.ui.traceback()
                 if e.args[1] == svnwrap.ERR_INCOMPLETE_DATA:
                     self.addmissing(path)
                 else: # pragma: no cover

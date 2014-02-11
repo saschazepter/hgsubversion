@@ -32,7 +32,12 @@ all its tags and branches. In such cases you should clone from one level above
 trunk, as in the example above. This is known as `standard layout`, and works
 with repositories that use the conventional ``trunk``, ``tags`` and ``branches``
 directories. By default, hgsubversion will use this layout whenever it finds any
-of these directories at the specified directory on the server.
+of these directories at the specified directory on the server.  Standard layout
+also supports alternate names for the ``branches`` directory and multiple tags
+locations.  Finally, Standard Layout supports selecting a subdirectory relative
+to ``trunk``, and each branch and tag dir.  This is useful if you have a single
+``trunk``, ``branches``, and ``tags`` with several projects inside, and you wish
+to import only a single project.
 
 If you instead want to clone just a single directory or branch, clone the
 specific directory path. In the example above, to get *only* trunk, you would
@@ -44,6 +49,10 @@ option when using Mercurial 1.5 or later. To force single directory clone, use
 hgsubversion.layout option (see below for detailed help) ::
 
  $ hg clone --layout single svn+http://python-nose.googlecode.com/svn nose-hg
+
+Finally, if you want to clone two or more directores as separate
+branches, use the custom layout.  See the documentation below for the
+``hgsubversionbranch.*`` configuration for detailed help.
 
 Pulling new revisions into an already-converted repository is the same
 as from any other Mercurial source. Within the first example above,
@@ -296,6 +305,19 @@ settings:
     Path to a file for changing branch names during the conversion from
     Subversion to Mercurial.
 
+  ``hgsubversion.branchdir``
+
+    Specifies the subdirectory to look for branches under.  The
+    default is ``branches``.  This option has no effect for
+    single-directory clones.
+
+  ``hgsubversion.infix``
+
+    Specifies a path to strip between relative to the trunk/branch/tag
+    root as the mercurial root.  This can be used to import a single
+    sub-project when you have several sub-projects under a single
+    trunk/branches/tags layout in subversion.
+
   ``hgsubversion.filemap``
 
     Path to a file for filtering files during the conversion. Files may either
@@ -357,7 +379,9 @@ The following options only have an effect on the initial clone of a repository:
     repository is converted into a single branch. The default,
     ``auto``, causes hgsubversion to assume a standard layout if any
     of trunk, branches, or tags exist within the specified directory
-    on the server.
+    on the server.  ``custom`` causes hgsubversion to read the
+    ``hgsubversionbranch`` config section to determine the repository
+    layout.
 
   ``hgsubversion.startrev``
 
@@ -388,6 +412,27 @@ The following options only have an effect on the initial clone of a repository:
     become out of step with the contents of the Subversion repo).  If
     you use this option, be sure to carefully check the result of a
     pull afterwards.
+
+    ``hgsubversionbranch.*``
+
+    Use this config section with the custom layout to specify a cusomt
+    mapping of subversion path to Mercurial branch.  This is useful if
+    your layout is substantially different from the standard
+    trunk/branches/tags layout and/or you are only interested in a few
+    branches.
+
+    Example config that pulls in trunk as the default branch,
+    personal/alice as the alice branch, and releases/2.0/2.7 as
+    release-2.7::
+
+        [hgsubversionbranch]
+            default = trunk
+            alice = personal/alice
+            release-2.7 = releases/2.0/2.7
+
+    Note that it is an error to specify more than one branch for a
+    given path, or to sepecify nested paths (e.g. releases/2.0 and
+    releases/2.0/2.7)
 
 Please note that some of these options may be specified as command line options
 as well, and when done so, will override the configuration. If an authormap,

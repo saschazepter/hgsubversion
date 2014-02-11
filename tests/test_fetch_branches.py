@@ -2,11 +2,15 @@ import test_util
 
 import unittest
 
+from mercurial import error
 from mercurial import hg
 from mercurial import node
-from mercurial import util as hgutil
+
+from hgsubversion import compathacks
 
 class TestFetchBranches(test_util.TestBase):
+    stupid_mode_tests = True
+
     def _load_fixture_and_fetch_with_anchor(self, fixture_name, anchor):
         repo_path = self.load_svndump(fixture_name)
         source = '%s#%s' % (test_util.fileurl(repo_path), anchor)
@@ -24,43 +28,31 @@ class TestFetchBranches(test_util.TestBase):
     def openbranches(self, repo):
         return self.branches(repo)[0]
 
-    def test_rename_branch_parent(self, stupid=False):
-        repo = self._load_fixture_and_fetch('rename_branch_parent_dir.svndump',
-                                            stupid=stupid)
+    def test_rename_branch_parent(self):
+        repo = self._load_fixture_and_fetch('rename_branch_parent_dir.svndump')
         heads = [repo[n] for n in repo.heads()]
         heads = dict([(ctx.branch(), ctx) for ctx in heads])
         # Let these tests disabled yet as the fix is not obvious
         self.assertEqual(['dev_branch'], self.openbranches(repo))
 
-    def test_rename_branch_parent_stupid(self):
-        self.test_rename_branch_parent(stupid=True)
-
-    def test_unrelatedbranch(self, stupid=False):
-        repo = self._load_fixture_and_fetch('unrelatedbranch.svndump',
-                                            stupid=stupid)
+    def test_unrelatedbranch(self):
+        repo = self._load_fixture_and_fetch('unrelatedbranch.svndump')
         heads = [repo[n] for n in repo.heads()]
         heads = dict([(ctx.branch(), ctx) for ctx in heads])
         # Let these tests disabled yet as the fix is not obvious
         self.assertEqual(heads['branch1'].manifest().keys(), ['b'])
         self.assertEqual(heads['branch2'].manifest().keys(), ['a', 'b'])
 
-    def test_unrelatedbranch_stupid(self):
-        self.test_unrelatedbranch(True)
-
-    def test_unorderedbranch(self, stupid=False):
-        repo = self._load_fixture_and_fetch('unorderedbranch.svndump',
-                                            stupid=stupid)
+    def test_unorderedbranch(self):
+        repo = self._load_fixture_and_fetch('unorderedbranch.svndump')
         r = repo['branch']
         self.assertEqual(0, r.parents()[0].rev())
         self.assertEqual(['a', 'c', 'z'], sorted(r.manifest()))
 
-    def test_unorderedbranch_stupid(self):
-        self.test_unorderedbranch(True)
-
-    def test_renamed_branch_to_trunk(self, stupid=False):
+    def test_renamed_branch_to_trunk(self):
         config = {'hgsubversion.failonmissing': 'true'}
         repo = self._load_fixture_and_fetch('branch_rename_to_trunk.svndump',
-                                            stupid=stupid, config=config)
+                                            config=config)
         self.assertEqual(repo['default'].parents()[0].branch(), 'dev_branch')
         self.assert_('iota' in repo['default'])
         self.assertEqual(repo['old_trunk'].parents()[0].branch(), 'default')
@@ -68,56 +60,40 @@ class TestFetchBranches(test_util.TestBase):
         expected = ['default', 'old_trunk']
         self.assertEqual(self.openbranches(repo), expected)
 
-    def test_renamed_branch_to_trunk_stupid(self):
-        self.test_renamed_branch_to_trunk(stupid=True)
-
-    def test_replace_trunk_with_branch(self, stupid=False):
-        repo = self._load_fixture_and_fetch('replace_trunk_with_branch.svndump',
-                                            stupid=stupid)
+    def test_replace_trunk_with_branch(self):
+        repo = self._load_fixture_and_fetch('replace_trunk_with_branch.svndump')
         self.assertEqual(repo['default'].parents()[0].branch(), 'test')
         self.assertEqual(repo['tip'].branch(), 'default')
         self.assertEqual(repo['tip'].extra().get('close'), '1')
         self.assertEqual(self.openbranches(repo), ['default'])
 
-    def test_copybeforeclose(self, stupid=False):
-        repo = self._load_fixture_and_fetch('copybeforeclose.svndump',
-                                            stupid=stupid)
+    def test_copybeforeclose(self):
+        repo = self._load_fixture_and_fetch('copybeforeclose.svndump')
         self.assertEqual(repo['tip'].branch(), 'test')
         self.assertEqual(repo['test'].extra().get('close'), '1')
         self.assertEqual(repo['test']['b'].data(), 'a\n')
 
-    def test_copybeforeclose_stupid(self):
-        self.test_copybeforeclose(True)
-
-    def test_replace_trunk_with_branch_stupid(self):
-        self.test_replace_trunk_with_branch(stupid=True)
-
-    def test_branch_create_with_dir_delete_works(self, stupid=False):
-        repo = self._load_fixture_and_fetch('branch_create_with_dir_delete.svndump',
-                                            stupid=stupid)
+    def test_branch_create_with_dir_delete_works(self):
+        repo = self._load_fixture_and_fetch('branch_create_with_dir_delete.svndump')
         self.assertEqual(repo['tip'].manifest().keys(),
                          ['alpha', 'beta', 'iota', 'gamma', ])
 
-    def test_branch_tip_update_to_default(self, stupid=False):
+    def test_branch_tip_update_to_default(self):
         repo = self._load_fixture_and_fetch('unorderedbranch.svndump',
-                                            stupid=stupid, noupdate=False)
+                                            noupdate=False)
         self.assertEqual(repo[None].branch(), 'default')
         self.assertTrue('tip' not in repo[None].tags())
 
-    def test_branch_tip_update_to_default_stupid(self):
-        self.test_branch_tip_update_to_default(True)
-
     def test_branch_pull_anchor(self):
-        self.assertRaises(hgutil.Abort,
+        self.assertRaises(error.RepoLookupError,
                           self._load_fixture_and_fetch_with_anchor,
                           'unorderedbranch.svndump', 'NaN')
         repo = self._load_fixture_and_fetch_with_anchor(
             'unorderedbranch.svndump', '4')
-        self.assertTrue('c' not in repo.branchtags())
+        self.assertTrue('c' not in compathacks.branchset(repo))
 
-    def test_branches_weird_moves(self, stupid=False):
+    def test_branches_weird_moves(self):
         repo = self._load_fixture_and_fetch('renamedproject.svndump',
-                                            stupid=stupid,
                                             subdir='project')
         heads = [repo[n] for n in repo.heads()]
         heads = dict((ctx.branch(), ctx) for ctx in heads)
@@ -126,21 +102,16 @@ class TestFetchBranches(test_util.TestBase):
         self.assertEqual(mdefault, ['a', 'b', 'd/a'])
         self.assertEqual(mbranch, ['a'])
 
-    def test_branches_weird_moves_stupid(self):
-        self.test_branches_weird_moves(True)
-
-    def test_branch_delete_parent_dir(self, stupid=False):
-        repo = self._load_fixture_and_fetch('branch_delete_parent_dir.svndump',
-                                            stupid=stupid)
+    def test_branch_delete_parent_dir(self):
+        repo = self._load_fixture_and_fetch('branch_delete_parent_dir.svndump')
         openb, closedb = self.branches(repo)
         self.assertEqual(openb, [])
         self.assertEqual(closedb, ['dev_branch'])
         self.assertEqual(list(repo['dev_branch']), ['foo'])
 
-    def test_replace_branch_with_branch(self, stupid=False):
-        repo = self._load_fixture_and_fetch('replace_branch_with_branch.svndump',
-                                            stupid=stupid)
-        self.assertEqual(7, len(repo))
+    def test_replace_branch_with_branch(self):
+        repo = self._load_fixture_and_fetch('replace_branch_with_branch.svndump')
+        self.assertEqual(7, test_util.repolen(repo))
         # tip is former topological branch1 being closed
         ctx = repo['tip']
         self.assertEqual('1', ctx.extra().get('close', '0'))
@@ -159,8 +130,67 @@ class TestFetchBranches(test_util.TestBase):
         for f in ctx:
             self.assertTrue(not ctx[f].renamed())
 
-    def test_replace_branch_with_branch_stupid(self, stupid=False):
-        self.test_replace_branch_with_branch(True)
+    def test_misspelled_branches_tags(self):
+        config = {
+            'hgsubversion.branchdir': 'branchez',
+            'hgsubversion.tagpaths': 'tagz',
+            }
+        '''Tests using the tags dir for branches and the branches dir for tags'''
+        repo = self._load_fixture_and_fetch('misspelled_branches_tags.svndump',
+                                            layout='standard',
+                                            config=config)
+
+        heads = set([repo[n].branch() for n in repo.heads()])
+        expected_heads = set(['default', 'branch'])
+
+        self.assertEqual(heads, expected_heads)
+
+        tags = set(repo.tags())
+        expected_tags = set(['tip', 'tag_from_trunk', 'tag_from_branch'])
+        self.assertEqual(tags, expected_tags)
+
+    def test_subdir_branches_tags(self):
+        '''Tests using the tags dir for branches and the branches dir for tags'''
+        config = {
+            'hgsubversion.branchdir': 'bran/ches',
+            'hgsubversion.tagpaths': 'ta/gs',
+            }
+        repo = self._load_fixture_and_fetch('subdir_branches_tags.svndump',
+                                            layout='standard',
+                                            config=config)
+
+        heads = set([repo[n].branch() for n in repo.heads()])
+        expected_heads = set(['default', 'branch'])
+
+        self.assertEqual(heads, expected_heads)
+
+        tags = set(repo.tags())
+        expected_tags = set(['tip', 'tag_from_trunk', 'tag_from_branch'])
+        self.assertEqual(tags, expected_tags)
+
+    def test_subproject_fetch(self):
+        config = {
+            'hgsubversion.infix': 'project',
+            }
+        repo = self._load_fixture_and_fetch('subprojects.svndump',
+                                            layout='standard',
+                                            config=config)
+
+        heads = set([repo[n].branch() for n in repo.heads()])
+        expected_heads = set(['default', 'branch'])
+        self.assertEqual(heads, expected_heads)
+
+        tags = set(repo.tags())
+        expected_tags = set(['tip', 'tag_from_trunk', 'tag_from_branch'])
+        self.assertEqual(tags, expected_tags)
+
+        for head in repo.heads():
+            ctx = repo[head]
+            self.assertFalse('project/file' in ctx, 'failed to strip infix')
+            self.assertTrue('file' in ctx, 'failed to track a simple file')
+            self.assertFalse('other/phile' in ctx, 'pulled in other project')
+            self.assertFalse('phile' in ctx, 'merged other project in repo')
+
 
 def suite():
     all_tests = [unittest.TestLoader().loadTestsFromTestCase(TestFetchBranches),

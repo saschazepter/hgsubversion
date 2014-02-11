@@ -14,7 +14,7 @@ class TestPull(test_util.TestBase):
 
     def _loadupdate(self, fixture_name, *args, **kwargs):
         kwargs = kwargs.copy()
-        kwargs.update(stupid=False, noupdate=False)
+        kwargs.update(noupdate=False)
         repo, repo_path = self.load_and_fetch(fixture_name, *args, **kwargs)
         return repo, repo_path
 
@@ -79,7 +79,3 @@ class TestPull(test_util.TestBase):
         tip = repo['tip'].rev()
         self.assertEqual(tip, 1)
         self.assertEquals(verify.verify(repo.ui, repo, rev=tip), 0)
-
-def suite():
-    import unittest, sys
-    return unittest.findTestCases(sys.modules[__name__])

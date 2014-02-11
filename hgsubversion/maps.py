@@ -14,6 +14,9 @@ class AuthorMap(dict):
 
     If the 'hgsubversion.defaultauthors' configuration option is set to false,
     attempting to obtain an unknown author will fail with an Abort.
+    
+    If the 'hgsubversion.caseignoreauthors' configuration option is set to true,
+    the userid from Subversion is always compared lowercase.
     '''
 
     def __init__(self, ui, path, defaulthost=None):
@@ -26,6 +29,8 @@ class AuthorMap(dict):
         '''
         self.ui = ui
         self.path = path
+        self.use_defaultauthors = self.ui.configbool('hgsubversion', 'defaultauthors', True)
+        self.caseignoreauthors = self.ui.configbool('hgsubversion', 'caseignoreauthors', False)
         if defaulthost:
             self.defaulthost = '@%s' % defaulthost.lstrip('@')
         else:
@@ -45,7 +50,7 @@ class AuthorMap(dict):
         if path != self.path:
             writing = open(self.path, 'a')
 
-        self.ui.note('reading authormap from %s\n' % path)
+        self.ui.debug('reading authormap from %s\n' % path)
         f = open(path, 'r')
         for number, line_org in enumerate(f):
 
@@ -62,6 +67,9 @@ class AuthorMap(dict):
 
             src = src.strip()
             dst = dst.strip()
+
+            if self.caseignoreauthors:
+                src = src.lower()
 
             if writing:
                 if not src in self:
@@ -83,12 +91,18 @@ class AuthorMap(dict):
         as well as the backing store. '''
         if author is None:
             author = '(no author)'
-        if author in self:
-            result = self.super.__getitem__(author)
-        elif self.ui.configbool('hgsubversion', 'defaultauthors', True):
+
+        if self.caseignoreauthors:
+            search_author = author.lower()
+        else:
+            search_author = author
+
+        if search_author in self:
+            result = self.super.__getitem__(search_author)
+        elif self.use_defaultauthors:
             self[author] = result = '%s%s' % (author, self.defaulthost)
             msg = 'substituting author "%s" for default "%s"\n'
-            self.ui.note(msg % (author, result))
+            self.ui.debug(msg % (author, result))
         else:
             msg = 'author %s has no entry in the author map!'
             raise hgutil.Abort(msg % author)
@@ -333,7 +347,7 @@ class FileMap(object):
             f.close()
 
     def load(self, fn):
-        self.ui.note('reading file map from %s\n' % fn)
+        self.ui.debug('reading file map from %s\n' % fn)
         f = open(fn, 'r')
         self.load_fd(f, fn)
         f.close()
@@ -355,7 +369,7 @@ class FileMap(object):
                 self.ui.warn(msg % (fn, line.rstrip()))
 
     def _load(self):
-        self.ui.note('reading in-repo file map from %s\n' % self.path)
+        self.ui.debug('reading in-repo file map from %s\n' % self.path)
         f = open(self.path)
         ver = int(f.readline())
         if ver != self.VERSION:
@@ -394,7 +408,7 @@ class BranchMap(dict):
         if path != self.path:
             writing = open(self.path, 'a')
 
-        self.ui.note('reading branchmap from %s\n' % path)
+        self.ui.debug('reading branchmap from %s\n' % path)
         f = open(path, 'r')
         for number, line in enumerate(f):
 
@@ -456,7 +470,7 @@ class TagMap(dict):
         if path != self.path:
             writing = open(self.path, 'a')
 
-        self.ui.note('reading tag renames from %s\n' % path)
+        self.ui.debug('reading tag renames from %s\n' % path)
         f = open(path, 'r')
         for number, line in enumerate(f):
 

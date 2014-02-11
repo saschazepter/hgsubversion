@@ -3,6 +3,9 @@ import test_util
 import unittest
 
 class TestPushDirectories(test_util.TestBase):
+    stupid_mode_tests = True
+    obsolete_mode_tests = True
+
     def test_push_dirs(self):
         repo_path = self.load_and_fetch('emptyrepo.svndump')[1]
 
@@ -84,7 +87,6 @@ class TestPushDirectories(test_util.TestBase):
         # Tests simple pushing from default branch to a single dir repo
         # Changes a file in a subdir (regression).
         repo, repo_path = self.load_and_fetch('branch_from_tag.svndump',
-                                              stupid=False,
                                               layout='single',
                                               subdir='tags')
         changes = [('tag_r3/alpha', 'tag_r3/alpha', 'foo'),
@@ -103,8 +105,3 @@ class TestPushDirectories(test_util.TestBase):
                           'tag_r3/alpha',
                           'tag_r3/beta',
                           'tag_r3/new'])
-
-def suite():
-    all_tests = [unittest.TestLoader().loadTestsFromTestCase(TestPushDirectories),
-          ]
-    return unittest.TestSuite(all_tests)
