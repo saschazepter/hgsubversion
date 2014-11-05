@@ -84,10 +84,15 @@ class MapTests(test_util.TestBase):
     def test_author_map_no_overwrite(self):
         cwd = os.path.dirname(__file__)
         orig = os.path.join(cwd, 'fixtures', 'author-map-test.txt')
-        new = open(self.authors, 'w')
+        # create a fake hgsubversion repo
+        repopath = os.path.join(self.wc_path, '.hg')
+        repopath = os.path.join(repopath, 'svn')
+        if not os.path.isdir(repopath):
+            os.makedirs(repopath)
+        new = open(os.path.join(repopath, 'authors'), 'w')
         new.write(open(orig).read())
         new.close()
-        test = maps.AuthorMap(self.ui(), self.authors)
+        test = maps.AuthorMap(self.repo.svnmeta(skiperrorcheck=True))
         fromself = set(test)
         test.load(orig)
         all_tests = set(test)
@@ -284,21 +289,6 @@ class MapTests(test_util.TestBase):
 
         for r in repo:
             self.assertEquals(verify.verify(ui, repo, rev=r), 0)
-
-    def test_branchmap_no_replacement(self):
-        '''
-        test that empty mappings are rejected
-
-        Empty mappings are lines like 'this ='. The most sensible thing to do
-        is to not convert the 'this' branches. Until we can do that, we settle
-        with aborting.
-        '''
-        repo_path = self.load_svndump('propset-branch.svndump')
-        branchmap = open(self.branchmap, 'w')
-        branchmap.write("closeme =\n")
-        branchmap.close()
-        self.assertRaises(hgutil.Abort,
-                          maps.BranchMap, self.ui(), self.branchmap)
 
     def test_tagmap(self):
         repo_path = self.load_svndump('basic_tag_tests.svndump')

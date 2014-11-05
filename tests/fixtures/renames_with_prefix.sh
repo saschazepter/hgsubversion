@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Generate renames.svndump
+# Generate renames_with_prefix.svndump
 #
 
 set -e
@@ -10,15 +10,16 @@ rm -rf temp
 mkdir temp
 cd temp
 
-mkdir project-orig
-cd project-orig
+mkdir -p project-orig/prefix
+cd project-orig/prefix
 mkdir trunk
 mkdir branches
-cd ..
+cd ../..
 
 svnadmin create testrepo
 svnurl=file://`pwd`/testrepo
 svn import project-orig $svnurl -m "init project"
+svnurl=$svnurl/prefix
 
 svn co $svnurl project
 cd project/trunk
@@ -138,4 +139,4 @@ svn cp $svnurl/trunk/groupdir@2 groupdir2
 svn ci -m "copy groupdir from the past"
 cd ../..
 
-svnadmin dump testrepo > ../renames.svndump
+svnadmin dump testrepo > ../renames_with_prefix.svndump

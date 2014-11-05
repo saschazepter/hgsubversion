@@ -1,4 +1,3 @@
-import cPickle as pickle
 import posixpath
 import os
 import tempfile
@@ -17,7 +16,7 @@ import editor
 
 class SVNMeta(object):
 
-    def __init__(self, repo, uuid=None, subdir=None):
+    def __init__(self, repo, uuid=None, subdir=None, skiperrorcheck=False):
         """path is the path to the target hg repo.
 
         subdir is the subdirectory of the edits *on the svn server*.
@@ -26,51 +25,114 @@ class SVNMeta(object):
         self.ui = repo.ui
         self.repo = repo
         self.path = os.path.normpath(repo.join('..'))
+        self._skiperror = skiperrorcheck
 
-        if not os.path.isdir(self.meta_data_dir):
-            os.makedirs(self.meta_data_dir)
+        if not os.path.isdir(self.metapath):
+            os.makedirs(self.metapath)
         self.uuid = uuid
         self.subdir = subdir
-        self.revmap = maps.RevMap(repo)
+        self._revmap = None
+        self.firstpulled = 0
 
-        author_host = self.ui.config('hgsubversion', 'defaulthost', uuid)
-        authors = util.configpath(self.ui, 'authormap')
-        self.usebranchnames = self.ui.configbool('hgsubversion',
-                                                 'usebranchnames', True)
-        branchmap = util.configpath(self.ui, 'branchmap')
-        tagmap = util.configpath(self.ui, 'tagmap')
-        filemap = util.configpath(self.ui, 'filemap')
+        self._gen_cachedconfig('lastpulled', 0, configname=False)
+        self._gen_cachedconfig('defaultauthors', True)
+        self._gen_cachedconfig('caseignoreauthors', False)
+        self._gen_cachedconfig('defaulthost', self.uuid)
+        self._gen_cachedconfig('usebranchnames', True)
 
-        self.branches = {}
-        if os.path.exists(self.branch_info_file):
-            f = open(self.branch_info_file)
-            self.branches = pickle.load(f)
-            f.close()
+        self.branches = util.load(self.branch_info_file) or {}
         self.prevbranches = dict(self.branches)
-        self.tags = maps.Tags(repo)
-        self._layout = layouts.detect.layout_from_file(self.meta_data_dir,
+        self._tags = None
+        self._layout = layouts.detect.layout_from_file(self.metapath,
                                                        ui=self.repo.ui)
         self._layoutobj = None
 
-        self.authors = maps.AuthorMap(self.ui, self.authors_file,
-                                 defaulthost=author_host)
-        if authors: self.authors.load(authors)
+        self._authors = None
 
-        self.branchmap = maps.BranchMap(self.ui, self.branchmapfile)
-        if branchmap:
-            self.branchmap.load(branchmap)
+        self._branchmap = None
 
-        self.tagmap = maps.TagMap(self.ui, self.tagmapfile)
-        if tagmap:
-            self.tagmap.load(tagmap)
+        self._tagmap = None
 
-        self.filemap = maps.FileMap(self.ui, self.filemap_file)
-        if filemap:
-            self.filemap.load(filemap)
+        self._filemap = None
 
         self.lastdate = '1970-01-01 00:00:00 -0000'
         self.addedtags = {}
         self.deletedtags = {}
+
+    def _get_cachedconfig(self, name, filename, configname, default):
+        """Return a cached value for a config option. If the cache is uninitialized
+        then try to read its value from disk. Option can be overridden by the
+        commandline.
+            name: property name, e.g. 'lastpulled'
+            filename: name of file in .hg/svn
+            configname: commandline option name
+            default: default value
+        """
+        varname = '_' + name
+        if getattr(self, varname) is None:
+            # construct the file path from metapath (e.g. .hg/svn) plus the
+            # filename
+            f = os.path.join(self.metapath, filename)
+
+            # load the config property (i.e. command-line or .hgrc)
+            c = None
+            if configname:
+                # a little awkward but we need to convert the option from a
+                # string to whatever type the default value is, so we use the
+                # type of `default` to determine with ui.config method to call
+                c = None
+                if isinstance(default, bool):
+                    c = self.ui.configbool('hgsubversion', configname, default)
+                elif isinstance(default, int):
+                    c = self.ui.configint('hgsubversion', configname, default)
+                elif isinstance(default, list):
+                    c = self.ui.configlist('hgsubversion', configname, default)
+                else:
+                    c = self.ui.config('hgsubversion', configname, default)
+
+            # load the value from disk
+            val = util.load(f, default=default)
+
+            # prefer the non-default, and the one sent from command-line
+            if c is not None and c != val and c != default:
+                val = c
+
+            # set the value as the one from disk (or default if not found)
+            setattr(self, varname, val)
+
+            # save the value to disk by using the setter property
+            setattr(self, name, val)
+
+        return getattr(self, varname)
+
+    def _set_cachedconfig(self, value, name, filename):
+        varname = '_' + name
+        f = os.path.join(self.metapath, filename)
+        setattr(self, varname, value)
+        util.dump(value, f)
+
+    def _gen_cachedconfig(self, name, default=None, filename=None,
+                          configname=None):
+        """Generate an attribute for reading (and caching) config data.
+
+        This method constructs a new attribute on self with the given name.
+        The actual value from the config file will be read lazily, and then
+        cached once that read has occurred. No cache invalidation will happen,
+        so within a session these values shouldn't be required to mutate.
+        """
+        setattr(SVNMeta, '_' + name, None)
+        if filename is None:
+            filename = name
+        if configname is None:
+            configname = name
+        prop = property(lambda x: x._get_cachedconfig(name,
+                                                      filename,
+                                                      configname,
+                                                      default),
+                        lambda x, y: x._set_cachedconfig(y,
+                                                         name,
+                                                         filename))
+        setattr(SVNMeta, name, prop)
 
     @property
     def layout(self):
@@ -79,7 +141,7 @@ class SVNMeta(object):
         # gets called
         if not self._layout or self._layout == 'auto':
             self._layout = layouts.detect.layout_from_config(self.repo.ui)
-            layouts.persist.layout_to_file(self.meta_data_dir, self._layout)
+            layouts.persist.layout_to_file(self.metapath, self._layout)
         return self._layout
 
     @property
@@ -101,24 +163,23 @@ class SVNMeta(object):
         if subdir:
             subdir = '/'.join(p for p in subdir.split('/') if p)
 
-        subdirfile = os.path.join(self.meta_data_dir, 'subdir')
+        self.__subdir = None
+        subdirfile = os.path.join(self.metapath, 'subdir')
 
         if os.path.isfile(subdirfile):
-            stored_subdir = open(subdirfile).read()
+            stored_subdir = util.load(subdirfile)
             assert stored_subdir is not None
             if subdir is None:
                 self.__subdir = stored_subdir
-            elif subdir != stored_subdir:
+            elif subdir and subdir != stored_subdir:
                 raise hgutil.Abort('unable to work on a different path in the '
                                    'repository')
             else:
                 self.__subdir = subdir
         elif subdir is not None:
-            f = open(subdirfile, 'w')
-            f.write(subdir)
-            f.close()
+            util.dump(subdir, subdirfile)
             self.__subdir = subdir
-        else:
+        elif not self._skiperror:
             raise hgutil.Abort("hgsubversion metadata unavailable; "
                                "please run 'hg svn rebuildmeta'")
 
@@ -130,19 +191,18 @@ class SVNMeta(object):
         return self.__uuid
 
     def _set_uuid(self, uuid):
-        uuidfile = os.path.join(self.meta_data_dir, 'uuid')
+        self.__uuid = None
+        uuidfile = os.path.join(self.metapath, 'uuid')
         if os.path.isfile(uuidfile):
-            stored_uuid = open(uuidfile).read()
+            stored_uuid = util.load(uuidfile)
             assert stored_uuid
             if uuid and uuid != stored_uuid:
                 raise hgutil.Abort('unable to operate on unrelated repository')
             self.__uuid = uuid or stored_uuid
         elif uuid:
-            f = open(uuidfile, 'w')
-            f.write(uuid)
-            f.close()
+            util.dump(uuid, uuidfile)
             self.__uuid = uuid
-        else:
+        elif not self._skiperror:
             raise hgutil.Abort("hgsubversion metadata unavailable; "
                                "please run 'hg svn rebuildmeta'")
 
@@ -150,29 +210,74 @@ class SVNMeta(object):
                     'Error-checked UUID of source Subversion repository.')
 
     @property
-    def meta_data_dir(self):
+    def metapath(self):
         return os.path.join(self.path, '.hg', 'svn')
 
     @property
     def branch_info_file(self):
-        return os.path.join(self.meta_data_dir, 'branch_info')
+        return os.path.join(self.metapath, 'branch_info')
 
     @property
     def authors_file(self):
-        return os.path.join(self.meta_data_dir, 'authors')
+        return os.path.join(self.metapath, 'authors')
+
+    @property
+    def authors(self):
+        if self._authors is None:
+            self._authors = maps.AuthorMap(self)
+        return self._authors
 
     @property
     def filemap_file(self):
-        return os.path.join(self.meta_data_dir, 'filemap')
+        return os.path.join(self.metapath, 'filemap')
 
     @property
-    def branchmapfile(self):
-        return os.path.join(self.meta_data_dir, 'branchmap')
+    def filemap(self):
+        if self._filemap is None:
+            self._filemap = maps.FileMap(self)
+        return self._filemap
 
     @property
-    def tagmapfile(self):
+    def branchmap_file(self):
+        return os.path.join(self.metapath, 'branchmap')
+
+    @property
+    def branchmap(self):
+        if self._branchmap is None:
+            self._branchmap = maps.BranchMap(self)
+        return self._branchmap
+
+    @property
+    def tagfile(self):
+        # called tagmap for backwards compatibility
+        return os.path.join(self.metapath, 'tagmap')
+
+    @property
+    def tags(self):
+        if self._tags is None:
+            self._tags = maps.Tags(self)
+        return self._tags
+
+    @property
+    def tagmap_file(self):
         # called tag-renames for backwards compatibility
-        return os.path.join(self.meta_data_dir, 'tag-renames')
+        return os.path.join(self.metapath, 'tag-renames')
+
+    @property
+    def tagmap(self):
+        if self._tagmap is None:
+            self._tagmap = maps.TagMap(self)
+        return self._tagmap
+
+    @property
+    def revmap_file(self):
+        return os.path.join(self.metapath, 'rev_map')
+
+    @property
+    def revmap(self):
+        if self._revmap is None:
+            self._revmap = maps.RevMap(self)
+        return self._revmap
 
     def fixdate(self, date):
         if date is not None:
@@ -187,7 +292,7 @@ class SVNMeta(object):
         '''Save the Subversion metadata. This should really be called after
         every revision is created.
         '''
-        util.pickle_atomic(self.branches, self.branch_info_file)
+        util.dump(self.branches, self.branch_info_file)
 
     def localname(self, path):
         """Compute the local name for a branch located at path.
@@ -247,7 +352,7 @@ class SVNMeta(object):
 
     @property
     def taglocations(self):
-        return self.layoutobj.taglocations(self.meta_data_dir)
+        return self.layoutobj.taglocations(self.metapath)
 
     def get_path_tag(self, path):
         """If path could represent the path to a tag, returns the
@@ -395,7 +500,7 @@ class SVNMeta(object):
                     return node.hex(self.revmap[tagged])
                 tag = fromtag
             # Reference an existing tag
-            limitedtags = maps.Tags(self.repo, endrev=number - 1)
+            limitedtags = maps.Tags(self, endrev=number - 1)
             if tag in limitedtags:
                 return limitedtags[tag]
         r, br = self.get_parent_svn_branch_and_rev(number - 1, branch, exact)
