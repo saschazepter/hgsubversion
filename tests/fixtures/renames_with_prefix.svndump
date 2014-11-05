@@ -1,6 +1,6 @@
 SVN-fs-dump-format-version: 2
 
-UUID: e86bec6c-370f-405d-b639-abb48bba3962
+UUID: ae30a990-0fd3-493e-b5d7-883bdd606745
 
 Revision-number: 0
 Prop-content-length: 56
@@ -9,7 +9,7 @@ Content-length: 56
 K 8
 svn:date
 V 27
-2014-04-07T22:34:17.074854Z
+2014-04-08T01:02:22.118401Z
 PROPS-END
 
 Revision-number: 1
@@ -23,14 +23,14 @@ dschleimer
 K 8
 svn:date
 V 27
-2014-04-07T22:34:17.214759Z
+2014-04-08T01:02:22.138394Z
 K 7
 svn:log
 V 12
 init project
 PROPS-END
 
-Node-path: branches
+Node-path: prefix
 Node-kind: dir
 Node-action: add
 Prop-content-length: 10
@@ -39,7 +39,16 @@ Content-length: 10
 PROPS-END
 
 
-Node-path: trunk
+Node-path: prefix/branches
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+
+Node-path: prefix/trunk
 Node-kind: dir
 Node-action: add
 Prop-content-length: 10
@@ -59,14 +68,14 @@ dschleimer
 K 8
 svn:date
 V 27
-2014-04-07T22:34:17.391940Z
+2014-04-08T01:02:22.304127Z
 K 7
 svn:log
 V 14
 add everything
 PROPS-END
 
-Node-path: trunk/a
+Node-path: prefix/trunk/a
 Node-kind: file
 Node-action: add
 Prop-content-length: 10
@@ -79,7 +88,7 @@ PROPS-END
 a
 
 
-Node-path: trunk/b
+Node-path: prefix/trunk/b
 Node-kind: file
 Node-action: add
 Prop-content-length: 10
@@ -92,7 +101,7 @@ PROPS-END
 b
 
 
-Node-path: trunk/changed
+Node-path: prefix/trunk/changed
 Node-kind: file
 Node-action: add
 Prop-content-length: 10
@@ -105,7 +114,7 @@ PROPS-END
 changed
 
 
-Node-path: trunk/changeddir
+Node-path: prefix/trunk/changeddir
 Node-kind: dir
 Node-action: add
 Prop-content-length: 10
@@ -114,7 +123,7 @@ Content-length: 10
 PROPS-END
 
 
-Node-path: trunk/changeddir/f
+Node-path: prefix/trunk/changeddir/f
 Node-kind: file
 Node-action: add
 Prop-content-length: 10
@@ -127,7 +136,7 @@ PROPS-END
 changed2
 
 
-Node-path: trunk/changeddir/link
+Node-path: prefix/trunk/changeddir/link
 Node-kind: file
 Node-action: add
 Prop-content-length: 33
@@ -143,7 +152,7 @@ V 1
 PROPS-END
 link f
 
-Node-path: trunk/changedlink
+Node-path: prefix/trunk/changedlink
 Node-kind: file
 Node-action: add
 Prop-content-length: 33
@@ -159,7 +168,7 @@ V 1
 PROPS-END
 link changed
 
-Node-path: trunk/da
+Node-path: prefix/trunk/da
 Node-kind: dir
 Node-action: add
 Prop-content-length: 10
@@ -168,7 +177,7 @@ Content-length: 10
 PROPS-END
 
 
-Node-path: trunk/da/daf
+Node-path: prefix/trunk/da/daf
 Node-kind: file
 Node-action: add
 Prop-content-length: 10
@@ -181,7 +190,7 @@ PROPS-END
 c
 
 
-Node-path: trunk/da/dalink
+Node-path: prefix/trunk/da/dalink
 Node-kind: file
 Node-action: add
 Prop-content-length: 33
@@ -197,7 +206,7 @@ V 1
 PROPS-END
 link daf
 
-Node-path: trunk/da/db
+Node-path: prefix/trunk/da/db
 Node-kind: dir
 Node-action: add
 Prop-content-length: 10
@@ -206,7 +215,7 @@ Content-length: 10
 PROPS-END
 
 
-Node-path: trunk/da/db/dbf
+Node-path: prefix/trunk/da/db/dbf
 Node-kind: file
 Node-action: add
 Prop-content-length: 10
@@ -219,7 +228,7 @@ PROPS-END
 d
 
 
-Node-path: trunk/da/db/dblink
+Node-path: prefix/trunk/da/db/dblink
 Node-kind: file
 Node-action: add
 Prop-content-length: 33
@@ -235,7 +244,7 @@ V 1
 PROPS-END
 link ../daf
 
-Node-path: trunk/deleteddir
+Node-path: prefix/trunk/deleteddir
 Node-kind: dir
 Node-action: add
 Prop-content-length: 10
@@ -244,7 +253,7 @@ Content-length: 10
 PROPS-END
 
 
-Node-path: trunk/deleteddir/f
+Node-path: prefix/trunk/deleteddir/f
 Node-kind: file
 Node-action: add
 Prop-content-length: 10
@@ -257,7 +266,7 @@ PROPS-END
 deleteddir
 
 
-Node-path: trunk/deleteddir/link
+Node-path: prefix/trunk/deleteddir/link
 Node-kind: file
 Node-action: add
 Prop-content-length: 33
@@ -273,7 +282,7 @@ V 1
 PROPS-END
 link f
 
-Node-path: trunk/deletedfile
+Node-path: prefix/trunk/deletedfile
 Node-kind: file
 Node-action: add
 Prop-content-length: 10
@@ -286,7 +295,7 @@ PROPS-END
 deleted
 
 
-Node-path: trunk/deletedlink
+Node-path: prefix/trunk/deletedlink
 Node-kind: file
 Node-action: add
 Prop-content-length: 33
@@ -302,7 +311,7 @@ V 1
 PROPS-END
 link b
 
-Node-path: trunk/groupdir
+Node-path: prefix/trunk/groupdir
 Node-kind: dir
 Node-action: add
 Prop-content-length: 10
@@ -311,7 +320,7 @@ Content-length: 10
 PROPS-END
 
 
-Node-path: trunk/groupdir/a
+Node-path: prefix/trunk/groupdir/a
 Node-kind: file
 Node-action: add
 Prop-content-length: 10
@@ -324,7 +333,7 @@ PROPS-END
 a
 
 
-Node-path: trunk/groupdir/b
+Node-path: prefix/trunk/groupdir/b
 Node-kind: file
 Node-action: add
 Prop-content-length: 10
@@ -337,7 +346,7 @@ PROPS-END
 b
 
 
-Node-path: trunk/groupdir/linka
+Node-path: prefix/trunk/groupdir/linka
 Node-kind: file
 Node-action: add
 Prop-content-length: 33
@@ -353,7 +362,7 @@ V 1
 PROPS-END
 link a
 
-Node-path: trunk/groupdir/linkb
+Node-path: prefix/trunk/groupdir/linkb
 Node-kind: file
 Node-action: add
 Prop-content-length: 33
@@ -369,7 +378,7 @@ V 1
 PROPS-END
 link b
 
-Node-path: trunk/linka
+Node-path: prefix/trunk/linka
 Node-kind: file
 Node-action: add
 Prop-content-length: 33
@@ -385,7 +394,7 @@ V 1
 PROPS-END
 link a
 
-Node-path: trunk/linkb
+Node-path: prefix/trunk/linkb
 Node-kind: file
 Node-action: add
 Prop-content-length: 33
@@ -401,7 +410,7 @@ V 1
 PROPS-END
 link b
 
-Node-path: trunk/unchanged
+Node-path: prefix/trunk/unchanged
 Node-kind: file
 Node-action: add
 Prop-content-length: 10
@@ -414,7 +423,7 @@ PROPS-END
 unchanged
 
 
-Node-path: trunk/unchangeddir
+Node-path: prefix/trunk/unchangeddir
 Node-kind: dir
 Node-action: add
 Prop-content-length: 10
@@ -423,7 +432,7 @@ Content-length: 10
 PROPS-END
 
 
-Node-path: trunk/unchangeddir/f
+Node-path: prefix/trunk/unchangeddir/f
 Node-kind: file
 Node-action: add
 Prop-content-length: 10
@@ -436,7 +445,7 @@ PROPS-END
 unchanged2
 
 
-Node-path: trunk/unchangeddir/link
+Node-path: prefix/trunk/unchangeddir/link
 Node-kind: file
 Node-action: add
 Prop-content-length: 33
@@ -452,7 +461,7 @@ V 1
 PROPS-END
 link f
 
-Node-path: trunk/unchangedlink
+Node-path: prefix/trunk/unchangedlink
 Node-kind: file
 Node-action: add
 Prop-content-length: 33
@@ -479,14 +488,14 @@ dschleimer
 K 8
 svn:date
 V 27
-2014-04-07T22:34:17.496578Z
+2014-04-08T01:02:22.400275Z
 K 7
 svn:log
 V 21
 delete files and dirs
 PROPS-END
 
-Node-path: trunk/changed
+Node-path: prefix/trunk/changed
 Node-kind: file
 Node-action: change
 Text-content-length: 16
@@ -498,7 +507,7 @@ changed
 changed
 
 
-Node-path: trunk/changeddir/f
+Node-path: prefix/trunk/changeddir/f
 Node-kind: file
 Node-action: change
 Text-content-length: 18
@@ -510,7 +519,7 @@ changed2
 changed2
 
 
-Node-path: trunk/changeddir/link
+Node-path: prefix/trunk/changeddir/link
 Node-kind: file
 Node-action: change
 Text-content-length: 15
@@ -520,7 +529,7 @@ Content-length: 15
 
 link ../changed
 
-Node-path: trunk/changedlink
+Node-path: prefix/trunk/changedlink
 Node-kind: file
 Node-action: change
 Text-content-length: 17
@@ -530,7 +539,7 @@ Content-length: 17
 
 link changeddir/f
 
-Node-path: trunk/groupdir/a
+Node-path: prefix/trunk/groupdir/a
 Node-kind: file
 Node-action: change
 Text-content-length: 4
@@ -542,7 +551,7 @@ a
 a
 
 
-Node-path: trunk/groupdir/linka
+Node-path: prefix/trunk/groupdir/linka
 Node-kind: file
 Node-action: change
 Text-content-length: 9
@@ -552,15 +561,15 @@ Content-length: 9
 
 link ../a
 
-Node-path: trunk/deleteddir
+Node-path: prefix/trunk/deleteddir
 Node-action: delete
 
 
-Node-path: trunk/deletedfile
+Node-path: prefix/trunk/deletedfile
 Node-action: delete
 
 
-Node-path: trunk/deletedlink
+Node-path: prefix/trunk/deletedlink
 Node-action: delete
 
 
@@ -575,176 +584,176 @@ dschleimer
 K 8
 svn:date
 V 27
-2014-04-07T22:34:17.595148Z
+2014-04-08T01:02:22.494631Z
 K 7
 svn:log
 V 14
 create branch1
 PROPS-END
 
-Node-path: branches/branch1
+Node-path: prefix/branches/branch1
 Node-kind: dir
 Node-action: add
 Node-copyfrom-rev: 1
-Node-copyfrom-path: trunk
+Node-copyfrom-path: prefix/trunk
 
 
-Node-path: branches/branch1/a
+Node-path: prefix/branches/branch1/a
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/a
+Node-copyfrom-path: prefix/trunk/a
 Text-copy-source-md5: 60b725f10c9c85c70d97880dfe8191b3
 Text-copy-source-sha1: 3f786850e387550fdab836ed7e6dc881de23001b
 
 
-Node-path: branches/branch1/b
+Node-path: prefix/branches/branch1/b
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/b
+Node-copyfrom-path: prefix/trunk/b
 Text-copy-source-md5: 3b5d5c3712955042212316173ccf37be
 Text-copy-source-sha1: 89e6c98d92887913cadf06b2adb97f26cde4849b
 
 
-Node-path: branches/branch1/changed
+Node-path: prefix/branches/branch1/changed
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 3
-Node-copyfrom-path: trunk/changed
+Node-copyfrom-path: prefix/trunk/changed
 Text-copy-source-md5: 1725f40a29aad369a39b0f96c82d50f9
 Text-copy-source-sha1: bd7078ed7302005a46b0f32b08cb81406df5d5cf
 
 
-Node-path: branches/branch1/changeddir
+Node-path: prefix/branches/branch1/changeddir
 Node-kind: dir
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/changeddir
+Node-copyfrom-path: prefix/trunk/changeddir
 
 
-Node-path: branches/branch1/changeddir/f
+Node-path: prefix/branches/branch1/changeddir/f
 Node-kind: file
 Node-action: delete
 
-Node-path: branches/branch1/changeddir/f
+Node-path: prefix/branches/branch1/changeddir/f
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 3
-Node-copyfrom-path: trunk/changeddir/f
+Node-copyfrom-path: prefix/trunk/changeddir/f
 Text-copy-source-md5: 984b8c4ab9193b7659b9f914897a949c
 Text-copy-source-sha1: df588cfa0799c1d4447646645ff2799e23e59f57
 
 
 
 
-Node-path: branches/branch1/changeddir/link
+Node-path: prefix/branches/branch1/changeddir/link
 Node-kind: file
 Node-action: delete
 
-Node-path: branches/branch1/changeddir/link
+Node-path: prefix/branches/branch1/changeddir/link
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 3
-Node-copyfrom-path: trunk/changeddir/link
+Node-copyfrom-path: prefix/trunk/changeddir/link
 Text-copy-source-md5: 19b47078b08789b4af5bc8d78b09f051
 Text-copy-source-sha1: 697d35a9a0857889666f1cae1baa9e294b4cf36f
 
 
 
 
-Node-path: branches/branch1/changedlink
+Node-path: prefix/branches/branch1/changedlink
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 3
-Node-copyfrom-path: trunk/changedlink
+Node-copyfrom-path: prefix/trunk/changedlink
 Text-copy-source-md5: 78d7d7c917f0f0355f01f23508cc0a0a
 Text-copy-source-sha1: 6d7057bfb5ba8dffc0184f491e4fa43ec1904cdd
 
 
-Node-path: branches/branch1/da
+Node-path: prefix/branches/branch1/da
 Node-kind: dir
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/da
+Node-copyfrom-path: prefix/trunk/da
 
 
-Node-path: branches/branch1/groupdir
+Node-path: prefix/branches/branch1/groupdir
 Node-kind: dir
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/groupdir
+Node-copyfrom-path: prefix/trunk/groupdir
 
 
-Node-path: branches/branch1/groupdir/a
+Node-path: prefix/branches/branch1/groupdir/a
 Node-kind: file
 Node-action: delete
 
-Node-path: branches/branch1/groupdir/a
+Node-path: prefix/branches/branch1/groupdir/a
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 3
-Node-copyfrom-path: trunk/groupdir/a
+Node-copyfrom-path: prefix/trunk/groupdir/a
 Text-copy-source-md5: 0d227f1abf8c2932d342e9b99cc957eb
 Text-copy-source-sha1: d7c8127a20a396cff08af086a1c695b0636f0c29
 
 
 
 
-Node-path: branches/branch1/groupdir/linka
+Node-path: prefix/branches/branch1/groupdir/linka
 Node-kind: file
 Node-action: delete
 
-Node-path: branches/branch1/groupdir/linka
+Node-path: prefix/branches/branch1/groupdir/linka
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 3
-Node-copyfrom-path: trunk/groupdir/linka
+Node-copyfrom-path: prefix/trunk/groupdir/linka
 Text-copy-source-md5: 37f1cfbed04f4354d8e706a1f1f626b6
 Text-copy-source-sha1: 7e368116b09c906ec1b989cefe328fd6dec4f759
 
 
 
 
-Node-path: branches/branch1/linka
+Node-path: prefix/branches/branch1/linka
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/linka
+Node-copyfrom-path: prefix/trunk/linka
 Text-copy-source-md5: c118dba188202a1efc975bef6064180b
 Text-copy-source-sha1: 41f94e4692313bf7f7c92aa600002f1dff93d6bf
 
 
-Node-path: branches/branch1/linkb
+Node-path: prefix/branches/branch1/linkb
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/linkb
+Node-copyfrom-path: prefix/trunk/linkb
 Text-copy-source-md5: e9292b8c4fca95ac8c70b4ae040d0b79
 Text-copy-source-sha1: 7325442a5f7383205e66db563025d51535883784
 
 
-Node-path: branches/branch1/unchanged
+Node-path: prefix/branches/branch1/unchanged
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/unchanged
+Node-copyfrom-path: prefix/trunk/unchanged
 Text-copy-source-md5: 85ae5b04dd0a666efad8633d142a4635
 Text-copy-source-sha1: c654a5435f170cfad37e136fee9672ecc40afd4a
 
 
-Node-path: branches/branch1/unchangeddir
+Node-path: prefix/branches/branch1/unchangeddir
 Node-kind: dir
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/unchangeddir
+Node-copyfrom-path: prefix/trunk/unchangeddir
 
 
-Node-path: branches/branch1/unchangedlink
+Node-path: prefix/branches/branch1/unchangedlink
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/unchangedlink
+Node-copyfrom-path: prefix/trunk/unchangedlink
 Text-copy-source-md5: 1aa9c01278c74a273e3117dc42426153
 Text-copy-source-sha1: 3f1a6ab03b820f0baab56c083f77bd9279db2486
 
@@ -760,14 +769,14 @@ dschleimer
 K 8
 svn:date
 V 27
-2014-04-07T22:34:17.655921Z
+2014-04-08T01:02:22.558149Z
 K 7
 svn:log
 V 15
 add c and linkc
 PROPS-END
 
-Node-path: branches/branch1/c
+Node-path: prefix/branches/branch1/c
 Node-kind: file
 Node-action: add
 Prop-content-length: 10
@@ -780,7 +789,7 @@ PROPS-END
 c
 
 
-Node-path: branches/branch1/linkc
+Node-path: prefix/branches/branch1/linkc
 Node-kind: file
 Node-action: add
 Prop-content-length: 33
@@ -807,18 +816,18 @@ dschleimer
 K 8
 svn:date
 V 27
-2014-04-07T22:34:17.901507Z
+2014-04-08T01:02:22.742494Z
 K 7
 svn:log
 V 48
 rename and copy a, b, c and da, plus their links
 PROPS-END
 
-Node-path: branches/branch1/c1
+Node-path: prefix/branches/branch1/c1
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 5
-Node-copyfrom-path: branches/branch1/c
+Node-copyfrom-path: prefix/branches/branch1/c
 Text-copy-source-md5: 2cd6ee2c70b0bde53fbe6cac3c8b8bb1
 Text-copy-source-sha1: 2b66fd261ee5c6cfc8de7fa466bab600bcfe4f69
 Text-content-length: 4
@@ -830,11 +839,11 @@ c
 c
 
 
-Node-path: branches/branch1/linkc1
+Node-path: prefix/branches/branch1/linkc1
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 5
-Node-copyfrom-path: branches/branch1/linkc
+Node-copyfrom-path: prefix/branches/branch1/linkc
 Text-copy-source-md5: aaa83258c434079cc82a5b4868340dc0
 Text-copy-source-sha1: d347f561790aa523b963fc1714c64e1d158cc5d7
 Text-content-length: 7
@@ -844,25 +853,25 @@ Content-length: 7
 
 link cc
 
-Node-path: trunk/a1
+Node-path: prefix/trunk/a1
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/a
+Node-copyfrom-path: prefix/trunk/a
 Text-copy-source-md5: 60b725f10c9c85c70d97880dfe8191b3
 Text-copy-source-sha1: 3f786850e387550fdab836ed7e6dc881de23001b
 
 
-Node-path: trunk/a2
+Node-path: prefix/trunk/a2
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/a
+Node-copyfrom-path: prefix/trunk/a
 Text-copy-source-md5: 60b725f10c9c85c70d97880dfe8191b3
 Text-copy-source-sha1: 3f786850e387550fdab836ed7e6dc881de23001b
 
 
-Node-path: trunk/b
+Node-path: prefix/trunk/b
 Node-kind: file
 Node-action: change
 Text-content-length: 4
@@ -874,11 +883,11 @@ b
 b
 
 
-Node-path: trunk/b1
+Node-path: prefix/trunk/b1
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/b
+Node-copyfrom-path: prefix/trunk/b
 Text-copy-source-md5: 3b5d5c3712955042212316173ccf37be
 Text-copy-source-sha1: 89e6c98d92887913cadf06b2adb97f26cde4849b
 Text-content-length: 4
@@ -890,39 +899,39 @@ b
 c
 
 
-Node-path: trunk/da1
+Node-path: prefix/trunk/da1
 Node-kind: dir
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/da
+Node-copyfrom-path: prefix/trunk/da
 
 
-Node-path: trunk/da2
+Node-path: prefix/trunk/da2
 Node-kind: dir
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/da
+Node-copyfrom-path: prefix/trunk/da
 
 
-Node-path: trunk/linka1
+Node-path: prefix/trunk/linka1
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/linka
+Node-copyfrom-path: prefix/trunk/linka
 Text-copy-source-md5: c118dba188202a1efc975bef6064180b
 Text-copy-source-sha1: 41f94e4692313bf7f7c92aa600002f1dff93d6bf
 
 
-Node-path: trunk/linka2
+Node-path: prefix/trunk/linka2
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/linka
+Node-copyfrom-path: prefix/trunk/linka
 Text-copy-source-md5: c118dba188202a1efc975bef6064180b
 Text-copy-source-sha1: 41f94e4692313bf7f7c92aa600002f1dff93d6bf
 
 
-Node-path: trunk/linkb
+Node-path: prefix/trunk/linkb
 Node-kind: file
 Node-action: change
 Text-content-length: 7
@@ -932,11 +941,11 @@ Content-length: 7
 
 link bb
 
-Node-path: trunk/linkb1
+Node-path: prefix/trunk/linkb1
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/linkb
+Node-copyfrom-path: prefix/trunk/linkb
 Text-copy-source-md5: e9292b8c4fca95ac8c70b4ae040d0b79
 Text-copy-source-sha1: 7325442a5f7383205e66db563025d51535883784
 Text-content-length: 7
@@ -946,15 +955,15 @@ Content-length: 7
 
 link bc
 
-Node-path: trunk/a
+Node-path: prefix/trunk/a
 Node-action: delete
 
 
-Node-path: trunk/da
+Node-path: prefix/trunk/da
 Node-action: delete
 
 
-Node-path: trunk/linka
+Node-path: prefix/trunk/linka
 Node-action: delete
 
 
@@ -969,27 +978,27 @@ dschleimer
 K 8
 svn:date
 V 27
-2014-04-07T22:34:17.969842Z
+2014-04-08T01:02:22.807910Z
 K 7
 svn:log
 V 19
 copy c from branch1
 PROPS-END
 
-Node-path: trunk/c
+Node-path: prefix/trunk/c
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 5
-Node-copyfrom-path: branches/branch1/c
+Node-copyfrom-path: prefix/branches/branch1/c
 Text-copy-source-md5: 2cd6ee2c70b0bde53fbe6cac3c8b8bb1
 Text-copy-source-sha1: 2b66fd261ee5c6cfc8de7fa466bab600bcfe4f69
 
 
-Node-path: trunk/linkc
+Node-path: prefix/trunk/linkc
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 5
-Node-copyfrom-path: branches/branch1/linkc
+Node-copyfrom-path: prefix/branches/branch1/linkc
 Text-copy-source-md5: aaa83258c434079cc82a5b4868340dc0
 Text-copy-source-sha1: d347f561790aa523b963fc1714c64e1d158cc5d7
 
@@ -1005,34 +1014,34 @@ dschleimer
 K 8
 svn:date
 V 27
-2014-04-07T22:34:18.068356Z
+2014-04-08T01:02:22.895608Z
 K 7
 svn:log
 V 24
 copy stuff from the past
 PROPS-END
 
-Node-path: trunk/deleteddir
+Node-path: prefix/trunk/deleteddir
 Node-kind: dir
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/deleteddir
+Node-copyfrom-path: prefix/trunk/deleteddir
 
 
-Node-path: trunk/deletedfile
+Node-path: prefix/trunk/deletedfile
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/deletedfile
+Node-copyfrom-path: prefix/trunk/deletedfile
 Text-copy-source-md5: 4d742b2f247bec99b41a60acbebc149a
 Text-copy-source-sha1: 1ef5922542033869106719d682a87ed706af4ddd
 
 
-Node-path: trunk/deletedlink
+Node-path: prefix/trunk/deletedlink
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/deletedlink
+Node-copyfrom-path: prefix/trunk/deletedlink
 Text-copy-source-md5: e9292b8c4fca95ac8c70b4ae040d0b79
 Text-copy-source-sha1: 7325442a5f7383205e66db563025d51535883784
 
@@ -1048,27 +1057,27 @@ dschleimer
 K 8
 svn:date
 V 27
-2014-04-07T22:34:18.201489Z
+2014-04-08T01:02:23.017668Z
 K 7
 svn:log
 V 38
 copy stuff from the past before change
 PROPS-END
 
-Node-path: trunk/changed2
+Node-path: prefix/trunk/changed2
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/changed
+Node-copyfrom-path: prefix/trunk/changed
 Text-copy-source-md5: ec1bebaea2c042beb68f7679ddd106a4
 Text-copy-source-sha1: 2f6933b5ee0f5fdd823d9717d8729f3c2523811b
 
 
-Node-path: trunk/changed3
+Node-path: prefix/trunk/changed3
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/changed
+Node-copyfrom-path: prefix/trunk/changed
 Text-copy-source-md5: ec1bebaea2c042beb68f7679ddd106a4
 Text-copy-source-sha1: 2f6933b5ee0f5fdd823d9717d8729f3c2523811b
 Text-content-length: 17
@@ -1080,27 +1089,27 @@ changed
 changed3
 
 
-Node-path: trunk/changeddir2
+Node-path: prefix/trunk/changeddir2
 Node-kind: dir
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/changeddir
+Node-copyfrom-path: prefix/trunk/changeddir
 
 
-Node-path: trunk/changedlink2
+Node-path: prefix/trunk/changedlink2
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/changedlink
+Node-copyfrom-path: prefix/trunk/changedlink
 Text-copy-source-md5: d91fb1e1062e62a17f97b44932d454c4
 Text-copy-source-sha1: 8c147187742f58ed0cd8707ddd0c0942fe8b2616
 
 
-Node-path: trunk/changedlink3
+Node-path: prefix/trunk/changedlink3
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/changedlink
+Node-copyfrom-path: prefix/trunk/changedlink
 Text-copy-source-md5: d91fb1e1062e62a17f97b44932d454c4
 Text-copy-source-sha1: 8c147187742f58ed0cd8707ddd0c0942fe8b2616
 Text-content-length: 13
@@ -1121,34 +1130,34 @@ dschleimer
 K 8
 svn:date
 V 27
-2014-04-07T22:34:18.298821Z
+2014-04-08T01:02:23.111440Z
 K 7
 svn:log
 V 34
 copy unchanged stuff from the past
 PROPS-END
 
-Node-path: trunk/unchanged2
+Node-path: prefix/trunk/unchanged2
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/unchanged
+Node-copyfrom-path: prefix/trunk/unchanged
 Text-copy-source-md5: 85ae5b04dd0a666efad8633d142a4635
 Text-copy-source-sha1: c654a5435f170cfad37e136fee9672ecc40afd4a
 
 
-Node-path: trunk/unchangeddir2
+Node-path: prefix/trunk/unchangeddir2
 Node-kind: dir
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/unchangeddir
+Node-copyfrom-path: prefix/trunk/unchangeddir
 
 
-Node-path: trunk/unchangedlink2
+Node-path: prefix/trunk/unchangedlink2
 Node-kind: file
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/unchangedlink
+Node-copyfrom-path: prefix/trunk/unchangedlink
 Text-copy-source-md5: 1aa9c01278c74a273e3117dc42426153
 Text-copy-source-sha1: 3f1a6ab03b820f0baab56c083f77bd9279db2486
 
@@ -1164,17 +1173,17 @@ dschleimer
 K 8
 svn:date
 V 27
-2014-04-07T22:34:18.370254Z
+2014-04-08T01:02:23.179096Z
 K 7
 svn:log
 V 27
 copy groupdir from the past
 PROPS-END
 
-Node-path: trunk/groupdir2
+Node-path: prefix/trunk/groupdir2
 Node-kind: dir
 Node-action: add
 Node-copyfrom-rev: 2
-Node-copyfrom-path: trunk/groupdir
+Node-copyfrom-path: prefix/trunk/groupdir
 
 

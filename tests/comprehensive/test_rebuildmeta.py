@@ -1,5 +1,4 @@
 import os
-import pickle
 import unittest
 import sys
 
@@ -14,11 +13,14 @@ except ImportError:
 from mercurial import context
 from mercurial import extensions
 from mercurial import hg
+from mercurial import localrepo
 from mercurial import ui
+from mercurial import util as hgutil
 
 from hgsubversion import compathacks
 from hgsubversion import svncommands
 from hgsubversion import svnmeta
+from hgsubversion import util
 
 # These test repositories have harmless skew in rebuildmeta for the
 # last-pulled-rev because the last rev in svn causes absolutely no
@@ -85,7 +87,12 @@ def _do_case(self, name, layout):
         # remove the wrapper
         context.changectx.children = origchildren
 
-    dest.pull(src)
+    if hgutil.safehasattr(localrepo.localrepository, 'pull'):
+        dest.pull(src)
+    else:
+        # Mercurial >= 3.2
+        from mercurial import exchange
+        exchange.pull(dest, src)
 
     # insert a wrapper that prevents calling changectx.children()
     extensions.wrapfunction(context.changectx, 'children', failfn)
@@ -110,23 +117,29 @@ def _run_assertions(self, name, single, src, dest, u):
     for tf in ('lastpulled', 'rev_map', 'uuid', 'tagmap', 'layout', 'subdir',):
 
         stf = os.path.join(src.path, 'svn', tf)
-        self.assertTrue(os.path.isfile(stf), '%r is missing!' % stf)
+        # the generation of tagmap is lazy so it doesn't strictly need to exist
+        # if it's not being used
+        if not stf.endswith('tagmap'):
+            self.assertTrue(os.path.isfile(stf), '%r is missing!' % stf)
         dtf = os.path.join(dest.path, 'svn', tf)
-        self.assertTrue(os.path.isfile(dtf), '%r is missing!' % tf)
-        old, new = open(stf).read(), open(dtf).read()
+        old, new = None, None
+        if not dtf.endswith('tagmap'):
+            self.assertTrue(os.path.isfile(dtf), '%r is missing!' % tf)
+        if os.path.isfile(stf) and os.path.isfile(dtf):
+            old, new = util.load(stf, resave=False), util.load(dtf, resave=False)
         if tf == 'lastpulled' and (name,
                                    self.stupid, single) in expect_youngest_skew:
             self.assertNotEqual(old, new,
                                 'rebuildmeta unexpected match on youngest rev!')
             continue
-        self.assertMultiLineEqual(old, new, tf + ' differs')
+        self.assertEqual(old, new, tf + ' differs')
         try:
           self.assertEqual(src.branchmap(), dest.branchmap())
         except AttributeError:
           # hg 2.8 and earlier
           self.assertEqual(src.branchtags(), dest.branchtags())
-    srcbi = pickle.load(open(os.path.join(src.path, 'svn', 'branch_info')))
-    destbi = pickle.load(open(os.path.join(dest.path, 'svn', 'branch_info')))
+    srcbi = util.load(os.path.join(src.path, 'svn', 'branch_info'))
+    destbi = util.load(os.path.join(dest.path, 'svn', 'branch_info'))
     self.assertEqual(sorted(srcbi.keys()), sorted(destbi.keys()))
     revkeys = svnmeta.SVNMeta(dest).revmap.keys()
     for branch in destbi:

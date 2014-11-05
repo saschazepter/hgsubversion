@@ -24,7 +24,7 @@ from mercurial import i18n
 from mercurial import node
 from mercurial import scmutil
 from mercurial import ui
-from mercurial import util
+from mercurial import util as hgutil
 from mercurial import extensions
 
 from hgsubversion import compathacks
@@ -108,6 +108,7 @@ subdir = {'truncatedhistory.svndump': '/project2',
           'non_ascii_path_1.svndump': '/b\xC3\xB8b',
           'non_ascii_path_2.svndump': '/b%C3%B8b',
           'subdir_is_file_prefix.svndump': '/flaf',
+          'renames_with_prefix.svndump': '/prefix',
           }
 # map defining the layouts of the fixtures we can use with custom layout
 # these are really popular layouts, so I gave them names
@@ -138,6 +139,10 @@ custom = {
         'old_trunk': 'branches/old_trunk',
         },
     'copies.svndump': trunk_only,
+    'copyafterclose.svndump': {
+        'default': 'trunk',
+        'test': 'branches/test'
+        },
     'copybeforeclose.svndump': {
         'default': 'trunk',
         'test': 'branches/test'
@@ -156,6 +161,10 @@ custom = {
         'branch': 'branches/branch',
         },
     'renames.svndump': {
+        'default': 'trunk',
+        'branch1': 'branches/branch1',
+        },
+    'renames_with_prefix.svndump': {
         'default': 'trunk',
         'branch1': 'branches/branch1',
         },
@@ -445,9 +454,15 @@ class TestBase(unittest.TestCase):
 
         self.oldenv = dict([(k, os.environ.get(k, None),) for k in
                            ('LANG', 'LC_ALL', 'HGRCPATH',)])
-        self.oldt = i18n.t
-        os.environ['LANG'] = os.environ['LC_ALL'] = 'C'
-        i18n.t = gettext.translation('hg', i18n.localedir, fallback=True)
+        try:
+            self.oldugettext = i18n._ugettext  # Mercurial >= 3.2
+        except AttributeError:
+            self.oldt = i18n.t
+            os.environ['LANG'] = os.environ['LC_ALL'] = 'C'
+            i18n.t = gettext.translation('hg', i18n.localedir, fallback=True)
+        else:
+            os.environ['LANG'] = os.environ['LC_ALL'] = 'C'
+            i18n.setdatapath(hgutil.datapath)
 
         self.oldwd = os.getcwd()
         self.tmpdir = tempfile.mkdtemp(
@@ -494,7 +509,10 @@ class TestBase(unittest.TestCase):
                 del os.environ[var]
             else:
                 os.environ[var] = val
-        i18n.t = self.oldt
+        try:
+            i18n._ugettext = self.oldugettext  # Mercurial >= 3.2
+        except AttributeError:
+            i18n.t = self.oldt
         rmtree(self.tmpdir)
         os.chdir(self.oldwd)
         setattr(ui.ui, self.patch[0].func_name, self.patch[0])
@@ -658,8 +676,7 @@ class TestBase(unittest.TestCase):
 
         def filectxfn(repo, memctx, path):
             if path in removed:
-                raise IOError(errno.ENOENT,
-                              "File \"%s\" no longer exists" % path)
+                return compathacks.filectxfn_deleted(memctx, path)
             entry = [e for e in changes if path == e[1]][0]
             source, dest, newdata = entry
             if newdata is None:

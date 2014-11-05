@@ -373,7 +373,7 @@ class PushTests(test_util.TestBase):
     def test_delete_file(self):
         repo = self.repo
         def file_callback(repo, memctx, path):
-            raise IOError(errno.ENOENT, '%s is deleted' % path)
+            return compathacks.filectxfn_deleted(memctx, path)
         old_files = set(repo['default'].manifest().keys())
         ctx = context.memctx(repo,
                              (repo['default'].node(), node.nullid),
@@ -552,7 +552,7 @@ class PushTests(test_util.TestBase):
                                               copied=False)
         ctx = context.memctx(repo,
                              (repo['default'].node(), node.nullid),
-                             'message',
+                             'mutate already-special file alpha',
                              ['alpha', ],
                              file_callback2,
                              'author',
@@ -577,7 +577,7 @@ class PushTests(test_util.TestBase):
                                               copied=False)
         ctx = context.memctx(repo,
                              (repo['default'].node(), node.nullid),
-                             'message',
+                             'convert alpha back to regular file',
                              ['alpha', ],
                              file_callback3,
                              'author',
@@ -754,3 +754,20 @@ class PushTests(test_util.TestBase):
         self.assertEqual(tip['adding_file'].data(), 'fooFirstFile')
         self.assertEqual(tip['newdir/new_file'].data(), 'fooNewFile')
         self.assertEqual(tip.branch(), 'default')
+
+    def test_update_after_push(self):
+        repo = self.repo
+        ui = repo.ui
+
+        ui.setconfig('hooks',
+                     'debug-hgsubversion-between-push-and-pull-for-tests',
+                     lambda ui, repo, hooktype: self.add_svn_rev(
+                         self.repo_path,
+                         {'trunk/racey_file': 'race conditions suck'}))
+
+        self.test_push_to_branch(push=False)
+        commands.push(ui, repo)
+        newctx = self.repo['.']
+        self.assertNotEqual(newctx.node(), self.repo['tip'].node())
+        self.assertEqual(newctx['adding_file'].data(), 'foo')
+        self.assertEqual(newctx.branch(), 'the_branch')

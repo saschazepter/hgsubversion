@@ -2,6 +2,12 @@ from hgext import rebase as hgrebase
 
 from mercurial import cmdutil
 from mercurial import discovery
+try:
+    from mercurial import exchange
+    exchange.push  # existed in first iteration of this file
+except ImportError:
+    # We only *use* the exchange module in hg 3.2+, so this is safe
+    pass
 from mercurial import patch
 from mercurial import hg
 from mercurial import util as hgutil
@@ -97,7 +103,7 @@ def incoming(orig, ui, repo, origsource='default', **opts):
     meta = repo.svnmeta(svn.uuid, svn.subdir)
 
     ui.status('incoming changes from %s\n' % other.svnurl)
-    svnrevisions = list(svn.revisions(start=meta.revmap.youngest))
+    svnrevisions = list(svn.revisions(start=meta.lastpulled))
     if opts.get('newest_first'):
         svnrevisions.reverse()
     # Returns 0 if there are incoming changes, 1 otherwise.
@@ -181,7 +187,8 @@ def push(repo, dest, force, revs):
     checkpush = getattr(repo, 'checkpush', None)
     if checkpush:
         try:
-            # The checkpush function changed as of e10000369b47 in mercurial
+            # The checkpush function changed as of e10000369b47 (first
+            # in 3.0) in mercurial
             from mercurial.exchange import pushoperation
             pushop = pushoperation(repo, dest, force, revs, False)
             checkpush(pushop)
@@ -209,6 +216,7 @@ def push(repo, dest, force, revs):
             ui.status('Cowardly refusing to push branch merge\n')
             return 0 # results in nonzero exit status, see hg's commands.py
         workingrev = repo.parents()[0]
+        workingbranch = workingrev.branch()
         ui.status('searching for changes\n')
         hashes = meta.revmap.hashes()
         outgoing = util.outgoing_revisions(repo, hashes, workingrev.node())
@@ -272,9 +280,16 @@ def push(repo, dest, force, revs):
                         "in svn.\n" % current_ctx)
                 return
 
+            # This hook is here purely for testing.  It allows us to
+            # onsistently trigger hit the race condition between
+            # pushing and pulling here.  In particular, we use it to
+            # trigger another revision landing between the time we
+            # push a revision and pull it back.
+            repo.hook('debug-hgsubversion-between-push-and-pull-for-tests')
+
             # 5. Pull the latest changesets from subversion, which will
             # include the one we just committed (and possibly others).
-            r = repo.pull(dest, force=force)
+            r = pull(repo, dest, force=force)
             assert not r or r == 0
             meta = repo.svnmeta(svn.uuid, svn.subdir)
             hashes = meta.revmap.hashes()
@@ -324,7 +339,7 @@ def push(repo, dest, force, revs):
 
         util.swap_out_encoding(old_encoding)
         try:
-            hg.update(repo, repo['tip'].node())
+            hg.update(repo, repo.branchtip(workingbranch))
         finally:
             util.swap_out_encoding()
 
@@ -353,6 +368,16 @@ def push(repo, dest, force, revs):
             util.swap_out_encoding(old_encoding)
     return 1 # so we get a sane exit status, see hg's commands.push
 
+def exchangepush(orig, repo, remote, force=False, revs=None, newbranch=False,
+                 bookmarks=()):
+    capable = getattr(remote, 'capable', lambda x: False)
+    if capable('subversion'):
+        pushop = exchange.pushoperation(repo, remote, force, revs, newbranch,
+                                        bookmarks=bookmarks)
+        pushop.cgresult = push(repo, remote, force, revs)
+        return pushop
+    else:
+        return orig(repo, remote, force, revs, newbranch, bookmarks=bookmarks)
 
 def pull(repo, source, heads=[], force=False):
     """pull new revisions from Subversion"""
@@ -390,7 +415,7 @@ def pull(repo, source, heads=[], force=False):
             meta.branchmap['default'] = branch
 
         ui = repo.ui
-        start = meta.revmap.youngest
+        start = meta.lastpulled
         origrevcount = len(meta.revmap)
 
         if start <= 0:
@@ -484,7 +509,7 @@ def pull(repo, source, heads=[], force=False):
         util.swap_out_encoding(old_encoding)
 
     if lastpulled is not None:
-        meta.revmap.youngest = lastpulled
+        meta.lastpulled = lastpulled
     revisions = len(meta.revmap) - oldrevisions
 
     if revisions == 0:
@@ -492,6 +517,19 @@ def pull(repo, source, heads=[], force=False):
         return 0
     else:
         ui.status("pulled %d revisions\n" % revisions)
+
+def exchangepull(orig, repo, remote, heads=None, force=False, bookmarks=()):
+    capable = getattr(remote, 'capable', lambda x: False)
+    if capable('subversion'):
+        pullop = exchange.pulloperation(repo, remote, heads, force,
+                                        bookmarks=bookmarks)
+        try:
+            pullop.cgresult = pull(repo, remote, heads, force)
+            return pullop
+        finally:
+            pullop.releasetransaction()
+    else:
+        return orig(repo, remote, heads, force, bookmarks=bookmarks)
 
 def rebase(orig, ui, repo, **opts):
     """rebase current unpushed revisions onto the Subversion head
@@ -573,11 +611,7 @@ def clone(orig, ui, source, dest=None, **opts):
 
     data = {}
     def hgclonewrapper(orig, ui, *args, **opts):
-        if getattr(hg, 'peer', None):
-            # Since 1.9 (d976542986d2)
-            origsource = args[1]
-        else:
-            origsource = args[0]
+        origsource = args[1]
 
         if isinstance(origsource, str):
             source, branch, checkout = util.parseurl(ui.expandpath(origsource),
@@ -612,14 +646,11 @@ def clone(orig, ui, source, dest=None, **opts):
 
     dstrepo = data.get('dstrepo')
     srcrepo = data.get('srcrepo')
+    dst = dstrepo.local()
 
     if dstrepo.local() and srcrepo.capable('subversion'):
         dst = dstrepo.local()
-        if isinstance(dst, bool):
-            # Apparently <= hg@1.9
-            fd = dstrepo.opener("hgrc", "a", text=True)
-        else:
-            fd = dst.opener("hgrc", "a", text=True)
+        fd = dst.opener("hgrc", "a", text=True)
         preservesections = set(s for s, v in optionmap.itervalues())
         preservesections |= extrasections
         for section in preservesections:

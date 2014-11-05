@@ -158,27 +158,8 @@ def filteriterhunks(meta):
         applycurrent = False
         # Passing False instead of textmode because we should never
         # be ignoring EOL type.
-        if iterhunks.func_code.co_argcount == 1:
-            # Since 1.9 (28762bb767dc)
-            fp = args[0]
-            gen = iterhunks(fp)
-        else:
-            ui, fp = args[:2]
-            if len(args) > 2:
-                sourcefile = args[2]
-            else:
-                sourcefile = kwargs.get('sourcefile', None)
-            if len(args) > 3:
-                textmode = args[3]
-            else:
-                textmode = kwargs.get('textmode', False)
-            if not iterhunks.func_defaults:
-                # Since 1.7 (cfedc529e4a1)
-                gen = iterhunks(ui, fp)
-            elif len(iterhunks.func_defaults) == 1:
-                gen = iterhunks(ui, fp, sourcefile)
-            else:
-                gen = iterhunks(ui, fp, sourcefile, textmode)
+        fp = args[0]
+        gen = iterhunks(fp)
         for data in gen:
             if data[0] == 'file':
                 if data[1][1] in meta.filemap:
@@ -226,7 +207,16 @@ def patchrepoold(ui, meta, parentctx, patchfp):
 try:
     class svnbackend(patch.repobackend):
         def getfile(self, fname):
-            data, (islink, isexec) = super(svnbackend, self).getfile(fname)
+            # In Mercurial >= 3.2, if fname is missing, data will be None and we
+            # should return None, None in that case. Earlier versions will raise
+            # an IOError which we let propagate up the stack.
+            f = super(svnbackend, self).getfile(fname)
+            if f is None:
+              return None, None
+            data, flags = f
+            if data is None:
+                return None, None
+            islink, isexec = flags
             if islink:
                 data = 'link ' + data
             return data, (islink, isexec)
@@ -361,13 +351,16 @@ def diff_branchrev(ui, svn, meta, branch, branchpath, r, parentctx):
                       if f.symlink is not None)
     def filectxfn(repo, memctx, path):
         if path in files_data and files_data[path] is None:
-            raise IOError(errno.ENOENT, '%s is deleted' % path)
+            return compathacks.filectxfn_deleted(memctx, path)
 
         if path in binary_files or path in unknown_files:
             pa = path
             if branchpath:
                 pa = branchpath + '/' + path
-            data, mode = svn.get_file(pa, r.revnum)
+            try:
+                data, mode = svn.get_file(pa, r.revnum)
+            except IOError:
+                return compathacks.filectxfn_deleted_reraise(memctx)
             isexe = 'x' in mode
             islink = 'l' in mode
         else:
@@ -587,7 +580,10 @@ def fetch_branchrev(svn, meta, branch, branchpath, r, parentctx):
         svnpath = path
         if branchpath:
             svnpath = branchpath + '/' + path
-        data, mode = svn.get_file(svnpath, r.revnum)
+        try:
+            data, mode = svn.get_file(svnpath, r.revnum)
+        except IOError:
+            return compathacks.filectxfn_deleted_reraise(memctx)
         isexec = 'x' in mode
         islink = 'l' in mode
         copied = copies.get(path)
@@ -736,7 +732,7 @@ def convert_rev(ui, meta, svn, r, tbdelta, firstrun):
         # path does not support this case with svn >= 1.7. We can fix
         # it, or we can force the existing fetch_branchrev() path. Do
         # the latter for now.
-        incremental = (meta.revmap.oldest > 0 and
+        incremental = (meta.firstpulled > 0 and
                        parentctx.rev() != node.nullrev and
                        not firstrun)
 
