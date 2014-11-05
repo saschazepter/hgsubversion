@@ -31,6 +31,13 @@ class FileStore(object):
         if fname in self._popped:
             raise EditingError('trying to set a popped file %s' % fname)
 
+        if fname in self._data:
+            self._size -= len(self._data[fname])
+            del self._data[fname]
+
+        if fname in self._files:
+            del self._files[fname]
+
         if self._maxsize < 0 or (len(data) + self._size) <= self._maxsize:
             self._data[fname] = data
             self._size += len(data)
@@ -239,6 +246,13 @@ class HgEditor(svnwrap.Editor):
         else:
             # Resolve missing directories content immediately so the
             # missing files maybe processed by delete actions.
+            # we remove the missing directory entries to deal with the case
+            # where a directory is replaced from e.g. a closed branch
+            # this will show up as a delete and then a copy
+            # we process deletes after missing, so we can handle a directory
+            # copy plus delete of file in that directory.  This means that we
+            # need to be sure that only things whose final disposition is
+            # deletion remain in self._deleted at the end of the editing process.
             rev = self.current.rev.revnum
             path = path + '/'
             parentdir = path[len(root):]
@@ -248,6 +262,7 @@ class HgEditor(svnwrap.Editor):
                 f = parentdir + f
                 if not self.meta.is_path_valid(f, False):
                     continue
+                self._deleted.discard(f)
                 self._missing.add(f)
 
     @svnwrap.ieditor
@@ -365,7 +380,10 @@ class HgEditor(svnwrap.Editor):
 
         fctx = ctx.filectx(from_file)
         flags = fctx.flags()
-        self.current.set(path, fctx.data(), 'x' in flags, 'l' in flags)
+        base = fctx.data()
+        if 'l' in flags:
+            base = 'link ' + base
+        self.current.set(path, base, 'x' in flags, 'l' in flags)
         copypath = None
         if from_branch == branch:
             parentid = self.meta.get_parent_revision(
@@ -374,7 +392,7 @@ class HgEditor(svnwrap.Editor):
                 parentctx = self._getctx(parentid)
                 if util.issamefile(parentctx, ctx, from_file):
                     copypath = from_file
-        return self._openfile(path, fctx.data(), 'x' in flags, 'l' in flags,
+        return self._openfile(path, base, 'x' in flags, 'l' in flags,
                 copypath, create=True)
 
     @svnwrap.ieditor
@@ -431,7 +449,7 @@ class HgEditor(svnwrap.Editor):
             source_rev = copyfrom_revision
             frompath, source_branch = self.meta.split_branch_path(copyfrom_path)[:2]
         new_hash = self.meta.get_parent_revision(source_rev + 1, source_branch, True)
-        if new_hash == node.nullid:
+        if frompath is None or new_hash == node.nullid:
             self.addmissing(path, isdir=True)
             return baton
         fromctx = self._getctx(new_hash)
@@ -636,7 +654,7 @@ class HgEditor(svnwrap.Editor):
                     svn.init_ra_and_client()
                 i += 1
                 data, mode = svn.get_file(f, rev)
-                self.current.set(f, data, 'x' in mode, 'l' in mode)
+                self.current.set(root + f, data, 'x' in mode, 'l' in mode)
             if not self.ui.debugflag:
                 self.ui.note('\n')
 

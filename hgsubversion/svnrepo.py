@@ -17,6 +17,7 @@ subclass: pull() is called on the instance pull *to*, but not the one pulled
 import errno
 
 from mercurial import error
+from mercurial import localrepo
 from mercurial import util as hgutil
 
 try:
@@ -71,10 +72,6 @@ def generate_repo_class(ui, repo):
         """
         original = getattr(repo, fn.__name__, None)
 
-        # remove when dropping support for hg < 1.6.
-        if original is None and fn.__name__ == 'findoutgoing':
-            return
-
         def wrapper(self, *args, **opts):
             capable = getattr(args[0], 'capable', lambda x: False)
             if capable('subversion'):
@@ -99,21 +96,25 @@ def generate_repo_class(ui, repo):
                 self.pushkey('phases', self[hash].hex(), str(phases.draft), str(phases.public))
             return hash
 
-        # TODO use newbranch to allow branch creation in Subversion?
-        @remotesvn
-        def push(self, remote, force=False, revs=None, newbranch=None):
-            return wrappers.push(self, remote, force, revs)
+        if hgutil.safehasattr(localrepo.localrepository, 'push'):
+            # Mercurial < 3.2
+            # TODO use newbranch to allow branch creation in Subversion?
+            @remotesvn
+            def push(self, remote, force=False, revs=None, newbranch=None):
+                return wrappers.push(self, remote, force, revs)
 
-        @remotesvn
-        def pull(self, remote, heads=[], force=False):
-            return wrappers.pull(self, remote, heads, force)
+        if hgutil.safehasattr(localrepo.localrepository, 'pull'):
+            # Mercurial < 3.2
+            @remotesvn
+            def pull(self, remote, heads=[], force=False):
+                return wrappers.pull(self, remote, heads, force)
 
         @remotesvn
         def findoutgoing(self, remote, base=None, heads=None, force=False):
             return wrappers.findoutgoing(repo, remote, heads, force)
 
-        def svnmeta(self, uuid=None, subdir=None):
-            return svnmeta.SVNMeta(self, uuid, subdir)
+        def svnmeta(self, uuid=None, subdir=None, skiperrorcheck=False):
+            return svnmeta.SVNMeta(self, uuid, subdir, skiperrorcheck)
 
     repo.__class__ = svnlocalrepo
 

@@ -1,8 +1,10 @@
-import cPickle as pickle
+import compathacks
 import errno
 import re
 import os
 import urllib
+import json
+import gc
 
 from mercurial import cmdutil
 from mercurial import error
@@ -54,6 +56,18 @@ def filterdiff(diff, oldrev, newrev):
     diff = header_re.sub(r'Index: \1' + '\n' + ('=' * 67), diff)
     return diff
 
+def gcdisable(orig):
+    """decorator to disable GC for a function or method"""
+    def wrapper(*args, **kwargs):
+        enabled = gc.isenabled()
+        if enabled:
+            gc.disable()
+        try:
+            orig(*args, **kwargs)
+        finally:
+            if enabled:
+                gc.enable()
+    return wrapper
 
 def parentrev(ui, repo, meta, hashes):
     """Find the svn parent revision of the repo's dirstate.
@@ -120,57 +134,74 @@ def normalize_url(url):
         url = '%s#%s' % (url, checkout)
     return url
 
+def _scrub(data):
+    if not data and not isinstance(data, list):
+        return ''
+    return data
 
-def load_string(file_path, default=None, limit=1024):
-    if not os.path.exists(file_path):
-        return default
-    try:
-        f = open(file_path, 'r')
-        ret = f.read(limit)
-        f.close()
-    except:
-        return default
-    if ret == '':
-        return default
-    return ret
+def _descrub(data):
+    if isinstance(data, list):
+        return tuple(data)
+    if data == '':
+        return None
+    return data
 
+def _convert(input, visitor):
+    if isinstance(input, dict):
+        scrubbed = {}
+        d = dict([(_convert(key, visitor), _convert(value, visitor))
+                  for key, value in input.iteritems()])
+        for key, val in d.iteritems():
+            scrubbed[visitor(key)] = visitor(val)
+        return scrubbed
+    elif isinstance(input, list):
+        return [_convert(element, visitor) for element in input]
+    elif isinstance(input, unicode):
+        return input.encode('utf-8')
+    return input
 
-def save_string(file_path, string):
-    if string is None:
-        string = ""
-    f = open(file_path, 'wb')
-    f.write(str(string))
-    f.close()
-
-def pickle_atomic(data, file_path):
-    """pickle some data to a path atomically.
+def dump(data, file_path):
+    """Serialize some data to a path atomically.
 
     This is present because I kept corrupting my revmap by managing to hit ^C
-    during the pickle of that file.
+    during the serialization of that file.
     """
     f = hgutil.atomictempfile(file_path, 'w+b', 0644)
-    pickle.dump(data, f)
-    # Older versions of hg have .rename() instead of .close on
-    # atomictempfile.
-    if getattr(hgutil.atomictempfile, 'rename', False):
-        f.rename()
-    else:
+    json.dump(_convert(data, _scrub), f)
+    f.close()
+
+def load(file_path, default=None, resave=True):
+    """Deserialize some data from a path.
+    """
+    data = default
+    if not os.path.exists(file_path):
+        return data
+
+    f = open(file_path)
+    try:
+        data = _convert(json.load(f), _descrub)
         f.close()
+    except ValueError:
+        try:
+            # Ok, JSON couldn't be loaded, so we'll try the old way of using pickle
+            data = compathacks.pickle_load(f)
+        except:
+            # well, pickle didn't work either, so we reset the file pointer and
+            # read the string
+            f.seek(0)
+            data = f.read()
+
+        # convert the file to json immediately
+        f.close()
+        if resave:
+            dump(data, file_path)
+    return data
 
 def parseurl(url, heads=[]):
-    parsed = hg.parseurl(url, heads)
-    if len(parsed) == 3:
-        # old hg, remove when we can be 1.5-only
-        svn_url, heads, checkout = parsed
-    else:
-        svn_url, heads = parsed
-        if isinstance(heads, tuple) and len(heads) == 2:
-            # hg 1.6 or later
-            _junk, heads = heads
-        if heads:
-            checkout = heads[0]
-        else:
-            checkout = None
+    checkout = None
+    svn_url, (_junk, heads) = hg.parseurl(url, heads)
+    if heads:
+        checkout = heads[0]
     return svn_url, heads, checkout
 
 
@@ -325,9 +356,11 @@ def revset_fromsvn(repo, subset, x):
 
     rev = repo.changelog.rev
     bin = node.bin
+    meta = repo.svnmeta(skiperrorcheck=True)
     try:
         svnrevs = set(rev(bin(l.split(' ', 2)[1]))
-                      for l in maps.RevMap.readmapfile(repo, missingok=False))
+                      for l in maps.RevMap.readmapfile(meta.revmap_file,
+                                                       missingok=False))
         return filter(svnrevs.__contains__, subset)
     except IOError, err:
         if err.errno != errno.ENOENT:
@@ -350,8 +383,9 @@ def revset_svnrev(repo, subset, x):
 
     rev = rev + ' '
     revs = []
+    meta = repo.svnmeta(skiperrorcheck=True)
     try:
-        for l in maps.RevMap.readmapfile(repo, missingok=False):
+        for l in maps.RevMap.readmapfile(meta.revmap_file, missingok=False):
             if l.startswith(rev):
                 n = l.split(' ', 2)[1]
                 r = repo[node.bin(n)].rev()

@@ -45,8 +45,8 @@ issue ``hg clone http://python-nose.googlecode.com/svn/trunk nose-trunk``. This
 works with any directory with a Subversion repository, and is known as a single
 directory clone. Normally, converted changesets will be marked as belonging to
 the ``default`` branch, but this can be changed by using the ``-b/--branch``
-option when using Mercurial 1.5 or later. To force single directory clone, use
-hgsubversion.layout option (see below for detailed help) ::
+option. To force single directory clone, use hgsubversion.layout option (see
+below for detailed help) ::
 
  $ hg clone --layout single svn+http://python-nose.googlecode.com/svn nose-hg
 
@@ -85,8 +85,6 @@ An example::
 
   $ hg log --template='{rev}:{node|short} {author|user}\nsvn: {svnrev}\n'
 
-The template keywords are available when using Mercurial 1.5 or later.
-
 For finding changesets from Subversion, hgsubversion extends revsets
 to provide two new selectors:
 
@@ -100,9 +98,7 @@ For example::
   $ hg log -r 'fromsvn()'
   $ hg log -r 'svnrev(500)'
 
-Revsets are available when using Mercurial 1.6 or later and are
-accepted by several Mercurial commands for specifying revisions. See
-``hg help revsets`` for details.
+See ``hg help revsets`` for details.
 
 Support for externals
 ---------------------
@@ -146,7 +142,7 @@ related Subversion repository.
 Alternatively, one can use the ``hgsubversion.externals`` in hgrc to
 specify ``subrepos`` as the externals mode. In this mode, ``.hgsub``
 and ``.hgsubstate`` files will be used instead of
-``.hgsvnexternals``. This feature requires Mercurial 1.7.1 or later.
+``.hgsvnexternals``.
 
 
 Using Subrepositories
@@ -182,8 +178,6 @@ where REWRITTEN_EXTERNAL_DEFINITION is like the original definition
 with the revision identifier replaced with {REV}.
 
 This mode has the following limitations:
-
-* Require Mercurial >= 1.7.1 to work correctly on all platforms.
 
 * "hgsubversion" subrepositories require hgsubversion extension to be
   available. To operate transparently on ``svn:externals`` we have to
@@ -365,10 +359,10 @@ settings:
     when necessary.
 
   ``hgsubversion.externals``
-    Set to ``subrepos`` to switch to subrepos-based externals support
-    (requires Mercurial 1.7.1 or later.) Default is ``svnexternals``,
-    which uses a custom hgsubversion-specific format and works on
-    older versions of Mercurial. Use ``ignore`` to avoid converting externals.
+    Set to ``subrepos`` to switch to subrepos-based externals support. Default
+    is ``svnexternals``, which uses a custom hgsubversion-specific format and
+    works on older versions of Mercurial. Use ``ignore`` to avoid converting
+    externals.
 
 The following options only have an effect on the initial clone of a repository:
 
