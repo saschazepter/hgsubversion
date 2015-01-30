@@ -22,44 +22,47 @@ class SVNMeta(object):
         subdir is the subdirectory of the edits *on the svn server*.
         It is needed for stripping paths off in certain cases.
         """
+        # simple and public variables
         self.ui = repo.ui
         self.repo = repo
         self.path = os.path.normpath(repo.join('..'))
-        self._skiperror = skiperrorcheck
+        self.firstpulled = 0
+        self.lastdate = '1970-01-01 00:00:00 -0000'
+        self.addedtags = {}
+        self.deletedtags = {}
 
+        # private variables
+        self._skiperror = skiperrorcheck
+        self._tags = None
+        self._layoutobj = None
+        self._revmap = None
+        self._authors = None
+        self._branchmap = None
+        self._tagmap = None
+        self._filemap = None
+
+        # create .hg/svn folder if it doesn't exist
         if not os.path.isdir(self.metapath):
             os.makedirs(self.metapath)
+
+        # properties that need .hg/svn to exist
         self.uuid = uuid
         self.subdir = subdir
-        self._revmap = None
-        self.firstpulled = 0
 
+        # generated properties that have a persistent file stored on disk
         self._gen_cachedconfig('lastpulled', 0, configname=False)
         self._gen_cachedconfig('defaultauthors', True)
         self._gen_cachedconfig('caseignoreauthors', False)
         self._gen_cachedconfig('defaulthost', self.uuid)
         self._gen_cachedconfig('usebranchnames', True)
+        self._gen_cachedconfig('defaultmessage', '')
 
+        # misc
         self.branches = util.load(self.branch_info_file) or {}
         self.prevbranches = dict(self.branches)
-        self._tags = None
-        self._layout = layouts.detect.layout_from_file(self.metapath,
-                                                       ui=self.repo.ui)
-        self._layoutobj = None
+        self._layout = layouts.detect.layout_from_file(self)
 
-        self._authors = None
-
-        self._branchmap = None
-
-        self._tagmap = None
-
-        self._filemap = None
-
-        self.lastdate = '1970-01-01 00:00:00 -0000'
-        self.addedtags = {}
-        self.deletedtags = {}
-
-    def _get_cachedconfig(self, name, filename, configname, default):
+    def _get_cachedconfig(self, name, filename, configname, default, pre):
         """Return a cached value for a config option. If the cache is uninitialized
         then try to read its value from disk. Option can be overridden by the
         commandline.
@@ -67,6 +70,7 @@ class SVNMeta(object):
             filename: name of file in .hg/svn
             configname: commandline option name
             default: default value
+            pre: transformation to apply to a value before caching it.
         """
         varname = '_' + name
         if getattr(self, varname) is None:
@@ -97,6 +101,10 @@ class SVNMeta(object):
             if c is not None and c != val and c != default:
                 val = c
 
+            # apply transformation if necessary
+            if pre:
+                val = pre(val)
+
             # set the value as the one from disk (or default if not found)
             setattr(self, varname, val)
 
@@ -112,7 +120,7 @@ class SVNMeta(object):
         util.dump(value, f)
 
     def _gen_cachedconfig(self, name, default=None, filename=None,
-                          configname=None):
+                          configname=None, pre=None):
         """Generate an attribute for reading (and caching) config data.
 
         This method constructs a new attribute on self with the given name.
@@ -125,14 +133,19 @@ class SVNMeta(object):
             filename = name
         if configname is None:
             configname = name
-        prop = property(lambda x: x._get_cachedconfig(name,
-                                                      filename,
-                                                      configname,
-                                                      default),
-                        lambda x, y: x._set_cachedconfig(y,
-                                                         name,
-                                                         filename))
+        prop = property(lambda x: self._get_cachedconfig(name,
+                                                         filename,
+                                                         configname,
+                                                         default,
+                                                         pre=pre),
+                        lambda x, y: self._set_cachedconfig(y,
+                                                            name,
+                                                            filename))
         setattr(SVNMeta, name, prop)
+
+    @property
+    def layout_file(self):
+        return os.path.join(self.metapath, 'layout')
 
     @property
     def layout(self):
@@ -140,14 +153,14 @@ class SVNMeta(object):
         # resolved into something other than auto before this ever
         # gets called
         if not self._layout or self._layout == 'auto':
-            self._layout = layouts.detect.layout_from_config(self.repo.ui)
-            layouts.persist.layout_to_file(self.metapath, self._layout)
+            self._layout = layouts.detect.layout_from_config(self)
+            util.dump(self._layout, self.layout_file)
         return self._layout
 
     @property
     def layoutobj(self):
         if not self._layoutobj:
-            self._layoutobj = layouts.layout_from_name(self.layout, self.ui)
+            self._layoutobj = layouts.layout_from_name(self.layout, self)
         return self._layoutobj
 
     @property
@@ -350,9 +363,19 @@ class SVNMeta(object):
             path = path[1:]
         return path
 
-    @property
-    def taglocations(self):
-        return self.layoutobj.taglocations(self.metapath)
+    def getmessage(self, rev):
+        msg = rev.message
+
+        if msg:
+            try:
+                msg.decode('utf-8')
+                return msg
+
+            except UnicodeDecodeError:
+                # ancient svn failed to enforce utf8 encoding
+                return msg.decode('iso-8859-1').encode('utf-8')
+        else:
+            return self.defaultmessage
 
     def get_path_tag(self, path):
         """If path could represent the path to a tag, returns the
@@ -362,7 +385,7 @@ class SVNMeta(object):
         (or tag) we have, for our purposes.
         """
         path = self.normalize(path)
-        return self.layoutobj.get_path_tag(path, self.taglocations)
+        return self.layoutobj.get_path_tag(path, self.layoutobj.taglocations)
 
     def split_branch_path(self, path, existing=True):
         """Figure out which branch inside our repo this path represents, and
@@ -694,7 +717,7 @@ class SVNMeta(object):
             revnum, branch = self.get_source_rev(ctx=parentctx)[:2]
         ctx = context.memctx(self.repo,
                              (parentctx.node(), node.nullid),
-                             util.getmessage(self.ui, rev),
+                             self.getmessage(rev),
                              ['.hgtags', ],
                              hgtagsfn,
                              self.authors[rev.author],
@@ -762,7 +785,7 @@ class SVNMeta(object):
 
             ctx = context.memctx(self.repo,
                                  (parent.node(), node.nullid),
-                                 util.getmessage(self.ui, rev),
+                                 self.getmessage(rev),
                                  ['.hgtags'],
                                  fctxfun,
                                  self.authors[rev.author],
@@ -784,7 +807,7 @@ class SVNMeta(object):
         self.mapbranch(extra, True)
         ctx = context.memctx(self.repo,
                              (node, revlog.nullid),
-                             util.getmessage(self.ui, rev),
+                             self.getmessage(rev),
                              [],
                              lambda x, y, z: None,
                              self.authors[rev.author],

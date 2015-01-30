@@ -171,61 +171,23 @@ def filteriterhunks(meta):
                 yield data
     return filterhunks
 
-def patchrepoold(ui, meta, parentctx, patchfp):
-    files = {}
-    try:
-        oldpatchfile = patch.patchfile
-        olditerhunks = patch.iterhunks
-        patch.patchfile = mempatchproxy(parentctx, files)
-        patch.iterhunks = filteriterhunks(meta)
-        try:
-            # We can safely ignore the changed list since we are
-            # handling non-git patches. Touched files are known
-            # by our memory patcher.
-            patch_st = patch.applydiff(ui, patchfp, {}, strip=0)
-        finally:
-            patch.patchfile = oldpatchfile
-            patch.iterhunks = olditerhunks
-    except patch.PatchError:
-        # TODO: this happens if the svn server has the wrong mime
-        # type stored and doesn't know a file is binary. It would
-        # be better to do one file at a time and only do a
-        # full fetch on files that had problems.
-        raise BadPatchApply('patching failed')
-    # if this patch didn't apply right, fall back to exporting the
-    # entire rev.
-    if patch_st == -1:
-        assert False, ('This should only happen on case-insensitive'
-                       ' volumes.')
-    elif patch_st == 1:
-        # When converting Django, I saw fuzz on .po files that was
-        # causing revisions to end up failing verification. If that
-        # can be fixed, maybe this won't ever be reached.
-        raise BadPatchApply('patching succeeded with fuzz')
-    return files
-
-try:
-    class svnbackend(patch.repobackend):
-        def getfile(self, fname):
-            # In Mercurial >= 3.2, if fname is missing, data will be None and we
-            # should return None, None in that case. Earlier versions will raise
-            # an IOError which we let propagate up the stack.
-            f = super(svnbackend, self).getfile(fname)
-            if f is None:
-              return None, None
-            data, flags = f
-            if data is None:
-                return None, None
-            islink, isexec = flags
-            if islink:
-                data = 'link ' + data
-            return data, (islink, isexec)
-except AttributeError:
-    svnbackend = None
+class svnbackend(patch.repobackend):
+    def getfile(self, fname):
+        # In Mercurial >= 3.2, if fname is missing, data will be None and we
+        # should return None, None in that case. Earlier versions will raise
+        # an IOError which we let propagate up the stack.
+        f = super(svnbackend, self).getfile(fname)
+        if f is None:
+          return None, None
+        data, flags = f
+        if data is None:
+            return None, None
+        islink, isexec = flags
+        if islink:
+            data = 'link ' + data
+        return data, (islink, isexec)
 
 def patchrepo(ui, meta, parentctx, patchfp):
-    if not svnbackend:
-        return patchrepoold(ui, meta, parentctx, patchfp)
     store = patch.filestore(util.getfilestoresize(ui))
     try:
         touched = set()
@@ -806,7 +768,7 @@ def convert_rev(ui, meta, svn, r, tbdelta, firstrun):
         meta.mapbranch(extra)
         current_ctx = context.memctx(meta.repo,
                                      [parentctx.node(), revlog.nullid],
-                                     util.getmessage(ui, r),
+                                     meta.getmessage(r),
                                      files_touched,
                                      filectxfn,
                                      meta.authors[r.author],

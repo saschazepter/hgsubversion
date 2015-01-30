@@ -9,8 +9,8 @@ from mercurial import util as hgutil
 
 class BaseLayout(object):
 
-    def __init__(self, ui):
-        self.ui = ui
+    def __init__(self, meta):
+        self.meta = meta
 
     def __unimplemented(self, method_name):
         raise NotImplementedError(
@@ -48,7 +48,8 @@ class BaseLayout(object):
         """
         self.__unimplemented('remotepath')
 
-    def taglocations(self, metapath):
+    @property
+    def taglocations(self):
         """Return a list of locations within svn to search for tags
 
         Should be returned in reverse-sorted order.
