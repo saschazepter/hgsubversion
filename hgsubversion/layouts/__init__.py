@@ -13,14 +13,12 @@ from mercurial import util as hgutil
 
 import custom
 import detect
-import persist
 import single
 import standard
 
 __all__ = [
     "detect",
     "layout_from_name",
-    "persist",
     ]
 
 # This is the authoritative store of what layouts are available.
@@ -33,7 +31,7 @@ NAME_TO_CLASS = {
 }
 
 
-def layout_from_name(name, ui):
+def layout_from_name(name, meta):
     """Returns a layout module given the layout name
 
     You should use one of the layout.detect.* functions to get the
@@ -42,5 +40,5 @@ def layout_from_name(name, ui):
     """
 
     if name not in NAME_TO_CLASS:
-        raise hgutil.Abort('Unknown hgsubversion layout: %s' %name)
-    return NAME_TO_CLASS[name](ui)
+        raise hgutil.Abort('Unknown hgsubversion layout: %s' % name)
+    return NAME_TO_CLASS[name](meta)

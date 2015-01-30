@@ -189,11 +189,11 @@ def _buildmeta(ui, repo, args, partial=False, skipuuid=False):
 
         if layout is None:
             layout = layouts.detect.layout_from_commit(subdir, revpath,
-                                                       ctx.branch(), ui)
-            existing_layout = layouts.detect.layout_from_file(meta.metapath)
+                                                       ctx.branch(), meta)
+            existing_layout = layouts.detect.layout_from_file(meta)
             if layout != existing_layout:
-                layouts.persist.layout_to_file(meta.metapath, layout)
-            layoutobj = layouts.layout_from_name(layout, ui)
+                util.dump(layout, meta.layout_file)
+            layoutobj = layouts.layout_from_name(layout, meta)
         elif layout == 'single':
             assert (subdir or '/') == revpath, ('Possible layout detection'
                                                 ' defect in replay')
@@ -219,7 +219,7 @@ def _buildmeta(ui, repo, args, partial=False, skipuuid=False):
         # find commitpath, write to revmap
         commitpath = revpath[len(subdir)+1:]
 
-        tag_locations = layoutobj.taglocations(meta.metapath)
+        tag_locations = layoutobj.taglocations
         found_tag = False
         for location in tag_locations:
             if commitpath.startswith(location + '/'):

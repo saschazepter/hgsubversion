@@ -261,6 +261,8 @@ def push(repo, dest, force, revs):
 
                 # Don't trust the pre-rebase repo and context.
                 repo = getlocalpeer(ui, {}, meta.path)
+                meta = repo.svnmeta(svn.uuid, svn.subdir)
+                hashes = meta.revmap.hashes()
                 tip_ctx = repo[tip_ctx.node()]
                 for c in tip_ctx.descendants():
                     rebasesrc = c.extra().get('rebase_source')
@@ -289,10 +291,8 @@ def push(repo, dest, force, revs):
 
             # 5. Pull the latest changesets from subversion, which will
             # include the one we just committed (and possibly others).
-            r = pull(repo, dest, force=force)
+            r = pull(repo, dest, force=force, meta=meta)
             assert not r or r == 0
-            meta = repo.svnmeta(svn.uuid, svn.subdir)
-            hashes = meta.revmap.hashes()
 
             # 6. Move our tip to the latest pulled tip
             for c in tip_ctx.descendants():
@@ -379,7 +379,7 @@ def exchangepush(orig, repo, remote, force=False, revs=None, newbranch=False,
     else:
         return orig(repo, remote, force, revs, newbranch, bookmarks=bookmarks)
 
-def pull(repo, source, heads=[], force=False):
+def pull(repo, source, heads=[], force=False, meta=None):
     """pull new revisions from Subversion"""
     assert source.capable('subversion')
     svn_url = source.svnurl
@@ -394,15 +394,16 @@ def pull(repo, source, heads=[], force=False):
             repo.ui.note('fetching stupidly...\n')
 
         svn = source.svn
-        meta = repo.svnmeta(svn.uuid, svn.subdir)
+        if meta is None:
+            meta = repo.svnmeta(svn.uuid, svn.subdir)
 
         stopat_rev = util.parse_revnum(svn, checkout)
 
-        layout = layouts.detect.layout_from_config(repo.ui, allow_auto=True)
+        layout = layouts.detect.layout_from_config(meta, allow_auto=True)
         if layout == 'auto':
             layout = layouts.detect.layout_from_subversion(svn,
                                                            (stopat_rev or None),
-                                                           repo.ui)
+                                                           meta)
             repo.ui.note('using %s layout\n' % layout)
 
         branch = repo.ui.config('hgsubversion', 'branch')
@@ -461,7 +462,7 @@ def pull(repo, source, heads=[], force=False):
                 converted = False
                 while not converted:
                     try:
-                        msg = util.getmessage(ui, r).strip()
+                        msg = meta.getmessage(r).strip()
                         if msg:
                             msg = [s.strip() for s in msg.splitlines() if s][0]
                         if getattr(ui, 'termwidth', False):
