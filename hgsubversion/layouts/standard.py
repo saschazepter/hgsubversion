@@ -5,80 +5,70 @@ import base
 class StandardLayout(base.BaseLayout):
     """The standard trunk, branches, tags layout"""
 
-    def __init__(self, ui):
-        base.BaseLayout.__init__(self, ui)
+    def __init__(self, meta):
+        base.BaseLayout.__init__(self, meta)
 
         self._tag_locations = None
 
-        self._branch_dir = ui.config('hgsubversion', 'branchdir', 'branches')
-        if self._branch_dir[0] == '/':
-            self._branch_dir = self._branch_dir[1:]
-        if self._branch_dir[-1] != '/':
-            self._branch_dir += '/'
+        # branchdir is expected to be stripped of leading slashes but retain
+        # its last slash
+        meta._gen_cachedconfig('branchdir', 'branches',
+                               pre=lambda x: '/'.join(p for p in x.split('/')
+                                                      if p) + '/')
 
-        self._infix = ui.config('hgsubversion', 'infix', '').strip('/')
-        if self._infix:
-            self._infix = '/' + self._infix
+        # infix is expected to be stripped of trailing slashes but retain
+        # its first slash
+        def _infix_transform(x):
+            x = '/'.join(p for p in x.split('/') if p)
+            if x:
+                x = '/' + x
+            return x
+        meta._gen_cachedconfig('infix', '', pre=_infix_transform)
 
-        self._trunk = 'trunk%s' % self._infix
+        # the lambda is to ensure nested paths are handled properly
+        meta._gen_cachedconfig('taglocations', ['tags'], 'tag_locations',
+                               'tagpaths', lambda x: list(reversed(sorted(x))))
+
+    @property
+    def trunk(self):
+        return 'trunk' + self.meta.infix
 
     def localname(self, path):
-        if path == self._trunk:
+        if path == self.trunk:
             return None
-        elif path.startswith(self._branch_dir) and path.endswith(self._infix):
-            path = path[len(self._branch_dir):]
-            if self._infix:
-                path = path[:-len(self._infix)]
+        elif path.startswith(self.meta.branchdir) and path.endswith(self.meta.infix):
+            path = path[len(self.meta.branchdir):]
+            if self.meta.infix:
+                path = path[:-len(self.meta.infix)]
             return path
         return  '../%s' % path
 
     def remotename(self, branch):
         if branch == 'default' or branch is None:
-            path = self._trunk
+            path = self.trunk
         elif branch.startswith('../'):
             path =  branch[3:]
         else:
-            path = ''.join((self._branch_dir, branch, self._infix))
+            path = ''.join((self.meta.branchdir, branch, self.meta.infix))
 
         return path
 
     def remotepath(self, branch, subdir='/'):
         if subdir == '/':
             subdir = ''
-        branchpath = self._trunk
+        branchpath = self.trunk
         if branch and branch != 'default':
             if branch.startswith('../'):
                 branchpath = branch[3:]
             else:
-                branchpath = ''.join((self._branch_dir, branch, self._infix))
+                branchpath = ''.join((self.meta.branchdir, branch,
+                                      self.meta.infix))
 
         return '%s/%s' % (subdir or '', branchpath)
 
-    def taglocations(self, metapath):
-        # import late to avoid trouble when running the test suite
-        try:
-            # newer versions of mercurial >= 2.8 will import this because the
-            # hgext_ logic is already being done in core
-            from hgsubversion import util
-        except ImportError:
-            from hgext_hgsubversion import util
-
-        if self._tag_locations is None:
-
-            tag_locations_file = os.path.join(metapath, 'tag_locations')
-            self._tag_locations = util.load(tag_locations_file)
-
-            if not self._tag_locations:
-                self._tag_locations = self.ui.configlist('hgsubversion',
-                                                        'tagpaths',
-                                                        ['tags'])
-            util.dump(self._tag_locations, tag_locations_file)
-
-            # ensure nested paths are handled properly
-            self._tag_locations.sort()
-            self._tag_locations.reverse()
-
-        return self._tag_locations
+    @property
+    def taglocations(self):
+        return self.meta.taglocations
 
     def get_path_tag(self, path, taglocations):
         for tagspath in taglocations:
@@ -109,22 +99,22 @@ class StandardLayout(base.BaseLayout):
             return candidate, '/'.join(components)
 
         if path == 'trunk' or path.startswith('trunk/'):
-            return self._trunk, path[len(self._trunk) + 1:]
+            return self.trunk, path[len(self.trunk) + 1:]
 
-        if path.startswith(self._branch_dir):
-            path = path[len(self._branch_dir):]
+        if path.startswith(self.meta.branchdir):
+            path = path[len(self.meta.branchdir):]
             components = path.split('/', 1)
-            branch_path = ''.join((self._branch_dir, components[0]))
+            branch_path = ''.join((self.meta.branchdir, components[0]))
             if len(components) == 1:
                 local_path = ''
             else:
                 local_path = components[1]
 
             if local_path == '':
-                branch_path += self._infix
-            elif local_path.startswith(self._infix[1:] + '/'):
-                branch_path += self._infix
-                local_path = local_path[len(self._infix):]
+                branch_path += self.meta.infix
+            elif local_path.startswith(self.meta.infix[1:] + '/'):
+                branch_path += self.meta.infix
+                local_path = local_path[len(self.meta.infix):]
             return branch_path, local_path
 
         components = path.split('/')
