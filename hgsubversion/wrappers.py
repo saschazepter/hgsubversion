@@ -399,21 +399,17 @@ def pull(repo, source, heads=[], force=False, meta=None):
 
         stopat_rev = util.parse_revnum(svn, checkout)
 
-        layout = layouts.detect.layout_from_config(meta, allow_auto=True)
-        if layout == 'auto':
-            layout = layouts.detect.layout_from_subversion(svn,
-                                                           (stopat_rev or None),
-                                                           meta)
-            repo.ui.note('using %s layout\n' % layout)
+        if meta.layout == 'auto':
+            meta.layout = meta.layout_from_subversion(svn, (stopat_rev or None))
+            repo.ui.note('using %s layout\n' % meta.layout)
 
-        branch = repo.ui.config('hgsubversion', 'branch')
-        if branch:
-            if layout != 'single':
+        if meta.branch:
+            if meta.layout != 'single':
                 msg = ('branch cannot be specified for Subversion clones using '
                        'standard directory layout')
                 raise hgutil.Abort(msg)
 
-            meta.branchmap['default'] = branch
+            meta.branchmap['default'] = meta.branch
 
         ui = repo.ui
         start = meta.lastpulled
@@ -425,7 +421,7 @@ def pull(repo, source, heads=[], force=False, meta=None):
                                                           'startrev', 0))
 
             if start > 0:
-                if layout == 'standard':
+                if meta.layout == 'standard':
                     raise hgutil.Abort('non-zero start revisions are only '
                                        'supported for single-directory clones.')
                 ui.note('starting at revision %d; any prior will be ignored\n'
@@ -593,6 +589,7 @@ optionmap = {
     'tagpaths': ('hgsubversion', 'tagpaths'),
     'authors': ('hgsubversion', 'authormap'),
     'branchdir': ('hgsubversion', 'branchdir'),
+    'trunkdir': ('hgsubversion', 'trunkdir'),
     'infix': ('hgsubversion', 'infix'),
     'filemap': ('hgsubversion', 'filemap'),
     'branchmap': ('hgsubversion', 'branchmap'),
