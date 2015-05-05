@@ -12,6 +12,7 @@ import util
 import maps
 import layouts
 import editor
+import svnwrap
 
 
 class SVNMeta(object):
@@ -40,6 +41,7 @@ class SVNMeta(object):
         self._branchmap = None
         self._tagmap = None
         self._filemap = None
+        self._layout = None
 
         # create .hg/svn folder if it doesn't exist
         if not os.path.isdir(self.metapath):
@@ -56,11 +58,12 @@ class SVNMeta(object):
         self._gen_cachedconfig('defaulthost', self.uuid)
         self._gen_cachedconfig('usebranchnames', True)
         self._gen_cachedconfig('defaultmessage', '')
+        self._gen_cachedconfig('branch', '')
+        self._gen_cachedconfig('layout', 'auto')
 
         # misc
         self.branches = util.load(self.branch_info_file) or {}
         self.prevbranches = dict(self.branches)
-        self._layout = layouts.detect.layout_from_file(self)
 
     def _get_cachedconfig(self, name, filename, configname, default, pre):
         """Return a cached value for a config option. If the cache is uninitialized
@@ -143,23 +146,73 @@ class SVNMeta(object):
                                                             filename))
         setattr(SVNMeta, name, prop)
 
+    def layout_from_subversion(self, svn, revision=None):
+        """ Guess what layout to use based on directories under the svn root.
+
+        This is intended for use during bootstrapping.  It guesses which
+        layout to use based on the presence or absence of the conventional
+        trunk, branches, tags dirs immediately under the path your are
+        cloning.
+
+        Additionally, this will write the layout in use to the ui object
+        passed, if any.
+
+        """
+
+        try:
+            rootlist = svn.list_dir('', revision=revision)
+        except svnwrap.SubversionException, e:
+            err = "%s (subversion error: %d)" % (e.args[0], e.args[1])
+            raise hgutil.Abort(err)
+        if sum(map(lambda x: x in rootlist, ('branches', 'tags', 'trunk'))):
+            layout = 'standard'
+        else:
+            layout = 'single'
+        self.ui.setconfig('hgsubversion', 'layout', layout)
+        return layout
+
+    def layout_from_commit(self, subdir, revpath, branch):
+        """ Guess what the layout is based existing commit info
+
+        Specifically, this compares the subdir for the repository and the
+        revpath as extracted from the convinfo in the commit.  If they
+        match, the layout is assumed to be single.  Otherwise, it tries
+        the available layouts and selects the first one that would
+        translate the given branch to the given revpath.
+
+        """
+
+        subdir = subdir or '/'
+        if subdir == revpath:
+            return 'single'
+
+        candidates = set()
+        for layout in layouts.NAME_TO_CLASS:
+            layoutobj = layouts.layout_from_name(layout, self)
+            try:
+                remotepath = layoutobj.remotepath(branch, subdir)
+            except KeyError:
+                continue
+            if remotepath == revpath:
+                candidates.add(layout)
+
+        if len(candidates) == 1:
+            return candidates.pop()
+        elif candidates:
+            config_layout = self.layout
+            if config_layout in candidates:
+                return config_layout
+
+        return 'standard'
+
     @property
     def layout_file(self):
         return os.path.join(self.metapath, 'layout')
 
     @property
-    def layout(self):
-        # this method can't determine the layout, but it needs to be
-        # resolved into something other than auto before this ever
-        # gets called
-        if not self._layout or self._layout == 'auto':
-            self._layout = layouts.detect.layout_from_config(self)
-            util.dump(self._layout, self.layout_file)
-        return self._layout
-
-    @property
     def layoutobj(self):
-        if not self._layoutobj:
+        # if self.layout has changed, we need to create a new layoutobj
+        if not self._layoutobj or self._layoutobj.name != self.layout:
             self._layoutobj = layouts.layout_from_name(self.layout, self)
         return self._layoutobj
 
