@@ -18,6 +18,15 @@ from hgsubversion import svnexternals
 class TestFetchExternals(test_util.TestBase):
     stupid_mode_tests = True
 
+    def setUp(self):
+        test_util.TestBase.setUp(self)
+        with open(self.hgrc, 'a') as rc:
+            rc.write('\n[subrepos]\nhgsubversion:allowed = true\n')
+
+    def ui(self, *args, **kwargs):
+        kwargs['subrepo'] = True
+        return test_util.TestBase.ui(self, *args, **kwargs)
+
     def test_externalsfile(self):
         f = svnexternals.externalsfile()
         f['t1'] = 'dir1 -r10 svn://foobar'
@@ -139,7 +148,7 @@ class TestFetchExternals(test_util.TestBase):
                 self.assertTrue(not os.path.isdir(p),
                                 'unexpected: %s@%r' % (d, rev))
 
-        ui = self.ui()
+        ui = self.ui(subrepo=True)
         repo = self._load_fixture_and_fetch('externals.svndump')
         commands.update(ui, repo)
         checkdeps(['deps/project1'], [], repo, 0)
@@ -239,7 +248,7 @@ deps/project2 = [hgsubversion] :-r{REV} ^/externals/project2@2 deps/project2
         if subrepo is None:
             return
 
-        ui = self.ui()
+        ui = self.ui(subrepo=True)
         repo = self._load_fixture_and_fetch('externals.svndump',
                                             externals='subrepos')
         checkdeps(ui, repo, 0, ['deps/project1'], [])
@@ -270,6 +279,15 @@ d3/ext3 = [hgsubversion] d3:^/trunk/common/ext ext3
 class TestPushExternals(test_util.TestBase):
     stupid_mode_tests = True
     obsolete_mode_tests = True
+
+    def setUp(self):
+        test_util.TestBase.setUp(self)
+        with open(self.hgrc, 'a') as rc:
+            rc.write('\n[subrepos]\nhgsubversion:allowed = true\n')
+
+    def ui(self, *args, **kwargs):
+        kwargs['subrepo'] = True
+        return test_util.TestBase.ui(self, *args, **kwargs)
 
     def test_push_externals(self):
         repo = self._load_fixture_and_fetch('pushexternals.svndump')
