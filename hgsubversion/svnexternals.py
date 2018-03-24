@@ -126,7 +126,7 @@ def resolvedots(url):
     Fix references that include .. entries.
     Scans a URL for .. type entries and resolves them but will not allow any
     number of ..s to take us out of domain so http://.. will raise an exception.
-    
+
     Tests, (Don't know how to construct a round trip for this so doctest):
     >>> # Relative URL within servers svn area
     >>> resolvedots(
@@ -176,7 +176,7 @@ def resolvedots(url):
 def resolvesource(ui, svnroot, source):
     """ Resolve the source as either matching the scheme re or by resolving
     relative URLs which start with ^ and my include relative .. references.
-    
+
     >>> root = 'http://some.svn.server/svn/some_repo'
     >>> resolvesource(None, root, 'http://other.svn.server')
     'http://other.svn.server'
@@ -523,7 +523,7 @@ class svnsubrepo(subrepo.svnsubrepo):
         if self._state[1] == 'HEAD':
             return 'HEAD'
         return super(svnsubrepo, self).basestate()
-    
+
 if __name__ == "__main__":
     import doctest
     doctest.testmod()
