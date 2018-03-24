@@ -5,7 +5,6 @@ from mercurial import error as hgerror
 from mercurial import revlog
 from mercurial import node
 from mercurial import context
-from mercurial import util as hgutil
 
 import compathacks
 import svnexternals
@@ -212,7 +211,6 @@ def _convert_rev(ui, meta, svn, r, tbdelta, firstrun):
         if ha == node.nullid:
             continue
 
-        parent_ctx = meta.repo.changectx(ha)
         files = []
         def del_all_files(*args):
             raise IOError(errno.ENOENT, 'deleting all files')

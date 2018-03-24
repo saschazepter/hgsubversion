@@ -7,7 +7,6 @@ from mercurial import error as hgerror
 from mercurial import node
 from mercurial import patch
 from mercurial import revlog
-from mercurial import util as hgutil
 
 import compathacks
 import svnwrap
@@ -645,14 +644,13 @@ def convert_rev(ui, meta, svn, r, tbdelta, firstrun):
 
     branches = branches_in_paths(meta, tbdelta, r.paths, r.revnum,
                                  svn.checkpath, svn.list_files, firstrun)
-    brpaths = branches.values()
     bad_branch_paths = {}
     for br, bp in branches.iteritems():
         bad_branch_paths[br] = []
 
         # This next block might be needed, but for now I'm omitting it until it
         # can be proven necessary.
-        # for bad in brpaths:
+        # for bad in branches.values():
         #     if bad.startswith(bp) and len(bad) > len(bp):
         #         bad_branch_paths[br].append(bad[len(bp)+1:])
 

@@ -1,14 +1,12 @@
 import difflib
 import posixpath
 
-from mercurial import util as hgutil
 from mercurial import error
 from mercurial import worker
 
 import svnwrap
 import svnrepo
 import util
-import editor
 
 def verify(ui, repo, args=None, **opts):
     '''verify current revision against Subversion repository
