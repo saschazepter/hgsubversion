@@ -4,6 +4,7 @@ import os
 import shutil
 import sys
 import tempfile
+import textwrap
 import urllib
 import collections
 
@@ -55,6 +56,18 @@ def version():
 def create_and_load(repopath, dumpfd):
     ''' create a new repository at repopath and load the given dump into it '''
     repo = repos.create(repopath)
+
+    with open(os.path.join(repopath, 'db', 'fsfs.conf'), 'w') as f:
+        f.write(textwrap.dedent("""\
+        # config settings for svn repos to try and speed up the testsuite
+        [rep-sharing]
+        enable-rep-sharing = false
+        [deltification]
+        enable-dir-deltification = false
+        enable-props-deltification = false
+        [compression]
+        compression-level=1
+        """))
 
     nullfd = open(os.devnull, 'w')
 
