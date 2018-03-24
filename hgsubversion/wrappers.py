@@ -688,7 +688,11 @@ def clone(orig, ui, source, dest=None, **opts):
 
     if dstrepo.local() and srcrepo.capable('subversion'):
         dst = dstrepo.local()
-        fd = dst.vfs("hgrc", "a", text=True)
+        try:
+            # hg before 4.5 requires text=True here
+            fd = dst.vfs("hgrc", "a", text=True)
+        except TypeError:
+            fd = dst.vfs("hgrc", "a")
         preservesections = set(s for s, v in optionmap.itervalues())
         preservesections |= extrasections
         for section in preservesections:
