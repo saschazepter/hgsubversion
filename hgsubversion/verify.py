@@ -24,7 +24,7 @@ def verify(ui, repo, args=None, **opts):
         return 0
     convert_revision = ctx.extra().get('convert_revision')
     if convert_revision is None or not convert_revision.startswith('svn:'):
-        raise hgutil.Abort('revision %s not from SVN' % ctx)
+        raise error.Abort('revision %s not from SVN' % ctx)
 
     if args:
         url = repo.ui.expandpath(args[0])
@@ -163,8 +163,8 @@ def verify(ui, repo, args=None, **opts):
                 stream = svnwrap.SimpleStringIO(closing=False)
                 handler = svnwrap.apply_txdelta('', stream)
                 if not callable(handler):
-                    raise hgutil.Abort('Error in Subversion bindings: '
-                                       'cannot call handler!')
+                    raise error.Abort('Error in Subversion bindings: '
+                                      'cannot call handler!')
                 def txdelt_window(window):
                     handler(window)
                     # window being None means we're done

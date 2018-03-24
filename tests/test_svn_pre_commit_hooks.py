@@ -3,9 +3,9 @@ import sys
 import test_util
 import unittest
 
-from mercurial import hg
 from mercurial import commands
-from mercurial import util
+from mercurial import error
+from mercurial import hg
 
 
 class TestSvnPreCommitHooks(test_util.TestBase):
@@ -28,4 +28,4 @@ class TestSvnPreCommitHooks(test_util.TestBase):
         changes = [('narf/a', 'narf/a', 'ohai',),
                    ]
         self.commitchanges(changes)
-        self.assertRaises(util.Abort, self.pushrevisions)
+        self.assertRaises(error.Abort, self.pushrevisions)

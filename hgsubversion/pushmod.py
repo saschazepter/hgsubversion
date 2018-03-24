@@ -1,3 +1,4 @@
+from mercurial import error as hgerror
 from mercurial import util as hgutil
 
 import svnwrap
@@ -208,11 +209,11 @@ def commit(ui, repo, rev_ctx, meta, base_revision, svn):
         if len(e.args) > 0 and e.args[1] in (svnwrap.ERR_FS_TXN_OUT_OF_DATE,
                                              svnwrap.ERR_FS_CONFLICT,
                                              svnwrap.ERR_FS_ALREADY_EXISTS):
-            raise hgutil.Abort('Outgoing changesets parent is not at '
+            raise hgerror.Abort('Outgoing changesets parent is not at '
                                'subversion HEAD\n'
                                '(pull again and rebase on a newer revision)')
         elif len(e.args) > 0 and e.args[1] == svnwrap.ERR_REPOS_HOOK_FAILURE:
             # Special handling for svn hooks blocking error
-            raise hgutil.Abort(e.args[0])
+            raise hgerror.Abort(e.args[0])
         else:
             raise

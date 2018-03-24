@@ -28,6 +28,7 @@ try:
 except ImportError:
     # We only *use* the exchange module in hg 3.2+, so this is safe
     pass
+from mercurial import error as hgerror
 from mercurial import extensions
 from mercurial import help
 from mercurial import hg
@@ -349,7 +350,7 @@ def _templatehelper(ctx, kw):
     elif kw == 'svnrev':
         return convertinfo[40:].rsplit('@', 1)[-1]
     else:
-        raise hgutil.Abort('unrecognized hgsubversion keyword %s' % kw)
+        raise hgerror.Abort('unrecognized hgsubversion keyword %s' % kw)
 
 @templatekeyword('svnrev')
 def svnrevkw(**args):

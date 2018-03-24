@@ -5,6 +5,7 @@ import unittest
 import re
 
 from hgext import rebase
+from mercurial import error as hgerror
 from mercurial import hg
 from mercurial import revlog
 from mercurial import context
@@ -132,26 +133,26 @@ class UtilityTests(test_util.TestBase):
         svncommands.updatemeta(self.ui(), self.repo, [])
 
         test_util.rmtree(self.repo.vfs.join('svn'))
-        self.assertRaises(hgutil.Abort,
+        self.assertRaises(hgerror.Abort,
                           self.repo.svnmeta)
-        self.assertRaises(hgutil.Abort,
+        self.assertRaises(hgerror.Abort,
                           svncommands.info,
                           self.ui(), repo=self.repo, args=[])
-        self.assertRaises(hgutil.Abort,
+        self.assertRaises(hgerror.Abort,
                           svncommands.genignore,
                           self.ui(), repo=self.repo, args=[])
 
         os.remove(self.repo.vfs.join('hgrc'))
-        self.assertRaises(hgutil.Abort,
+        self.assertRaises(hgerror.Abort,
                           self.repo.svnmeta)
-        self.assertRaises(hgutil.Abort,
+        self.assertRaises(hgerror.Abort,
                           svncommands.info,
                           self.ui(), repo=self.repo, args=[])
-        self.assertRaises(hgutil.Abort,
+        self.assertRaises(hgerror.Abort,
                           svncommands.genignore,
                           self.ui(), repo=self.repo, args=[])
 
-        self.assertRaises(hgutil.Abort,
+        self.assertRaises(hgerror.Abort,
                           svncommands.rebuildmeta,
                           self.ui(), repo=self.repo, args=[])
 
@@ -369,7 +370,7 @@ missing file: binary3
         # rebuildmeta with original repo
         svncommands.rebuildmeta(self.ui(), repo=self.repo, args=[])
         # rebuildmeta with unrelated repo
-        self.assertRaises(hgutil.Abort,
+        self.assertRaises(hgerror.Abort,
                           svncommands.rebuildmeta,
                           self.ui(), repo=self.repo, args=[otherurl])
         # rebuildmeta --unsafe-skip-uuid-check with unrelated repo

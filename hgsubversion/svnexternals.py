@@ -1,6 +1,7 @@
 import cStringIO
 
 import os, re, shutil, stat, subprocess
+from mercurial import error as hgerror
 from mercurial import util as hgutil
 from mercurial.i18n import _
 from mercurial import subrepo
@@ -58,7 +59,7 @@ class externalsfile(dict):
             if line.startswith('['):
                 line = line.strip()
                 if line[-1] != ']':
-                    raise hgutil.Abort('invalid externals section name: %s' % line)
+                    raise hgerror.Abort('invalid externals section name: %s' % line)
                 target = line[1:-1]
                 if target == '.':
                     target = ''
@@ -228,7 +229,7 @@ def parsedefinitions(ui, repo, svnroot, exts):
     for i, d in enumerate(defs):
         for d2 in defs[i+1:]:
             if d2[0].startswith(d[0] + '/'):
-                raise hgutil.Abort(_('external directories cannot nest:\n%s\n%s')
+                raise hgerror.Abort(_('external directories cannot nest:\n%s\n%s')
                                    % (d[0], d2[0]))
     return defs
 
@@ -264,22 +265,22 @@ def getsvninfo(svnurl):
                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     stdout = p.communicate()[0]
     if p.returncode:
-        raise hgutil.Abort(_('cannot get information about %s')
+        raise hgerror.Abort(_('cannot get information about %s')
                          % svnurl)
     m = re.search(r'<root>(.*)</root>', stdout, re.S)
     if not m:
-        raise hgutil.Abort(_('cannot find SVN repository root from %s')
+        raise hgerror.Abort(_('cannot find SVN repository root from %s')
                            % svnurl)
     root = m.group(1).rstrip('/')
 
     m = re.search(r'<url>(.*)</url>', stdout, re.S)
     if not m:
-        raise hgutil.Abort(_('cannot find SVN repository URL from %s') % svnurl)
+        raise hgerror.Abort(_('cannot find SVN repository URL from %s') % svnurl)
     url = m.group(1)
 
     m = re.search(r'<entry[^>]+revision="([^"]+)"', stdout, re.S)
     if not m:
-        raise hgutil.Abort(_('cannot find SVN revision from %s') % svnurl)
+        raise hgerror.Abort(_('cannot find SVN revision from %s') % svnurl)
     rev = m.group(1)
     return url, root, rev
 
@@ -348,13 +349,13 @@ class externalsupdater:
             self.ui.debug(line)
         p.wait()
         if p.returncode != 0:
-            raise hgutil.Abort("subprocess '%s' failed" % ' '.join(args))
+            raise hgerror.Abort("subprocess '%s' failed" % ' '.join(args))
 
 def updateexternals(ui, args, repo, **opts):
     """update repository externals
     """
     if len(args) > 2:
-        raise hgutil.Abort(_('updateexternals expects at most one changeset'))
+        raise hgerror.Abort(_('updateexternals expects at most one changeset'))
     node = None
     if len(args) == 2:
         svnurl = util.normalize_url(repo.ui.expandpath(args[0]))
@@ -384,7 +385,7 @@ def updateexternals(ui, args, repo, **opts):
         elif action == 'd':
             updater.delete(ext[0])
         else:
-            raise hgutil.Abort(_('unknown update actions: %r') % action)
+            raise hgerror.Abort(_('unknown update actions: %r') % action)
 
     file(repo.vfs.join('svn/externals'), 'wb').write(newext)
 
@@ -421,7 +422,7 @@ def getchanges(ui, repo, parentctx, exts):
     elif mode == 'ignore':
         files = {}
     else:
-        raise hgutil.Abort(_('unknown externals modes: %s') % mode)
+        raise hgerror.Abort(_('unknown externals modes: %s') % mode)
 
     # Should the really be updated?
     updates = {}
@@ -455,7 +456,7 @@ def parse(ui, ctx):
     elif mode == 'ignore':
         pass
     else:
-        raise hgutil.Abort(_('unknown externals modes: %s') % mode)
+        raise hgerror.Abort(_('unknown externals modes: %s') % mode)
     return external
 
 _notset = object()

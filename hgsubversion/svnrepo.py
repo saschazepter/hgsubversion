@@ -133,7 +133,7 @@ class svnremoterepo(peerrepository):
         if path is None:
             path = self.ui.config('paths', 'default')
         if not path:
-            raise hgutil.Abort('no Subversion URL specified. Expect '
+            raise error.Abort('no Subversion URL specified. Expect '
                                '[path] default= or [path] default-push= '
                                'SVN URL entries in hgrc.')
         self.path = path
@@ -179,7 +179,7 @@ class svnremoterepo(peerrepository):
             return svnwrap.SubversionRepo(auth[0], auth[1], auth[2], password_stores=self.password_stores)
         except svnwrap.SubversionConnectionException, e:
             self.ui.traceback()
-            raise hgutil.Abort(e)
+            raise error.Abort(e)
 
     @property
     def ui(self):
@@ -199,7 +199,7 @@ class svnremoterepo(peerrepository):
         Whenever this function is hit, we abort. The traceback is useful for
         figuring out where to intercept the functionality.
         """
-        raise hgutil.Abort('command unavailable for Subversion repositories')
+        raise error.Abort('command unavailable for Subversion repositories')
 
     def pushkey(self, namespace, key, old, new):
         return False
@@ -251,7 +251,7 @@ def instance(ui, url, create):
             ui.note('(falling back to Subversion support)\n')
 
     if create:
-        raise hgutil.Abort('cannot create new remote Subversion repository')
+        raise error.Abort('cannot create new remote Subversion repository')
 
     svnwrap.prompt_callback(SubversionPrompt(ui))
     return svnremoterepo(ui, url)
