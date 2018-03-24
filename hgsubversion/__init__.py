@@ -330,7 +330,8 @@ configitem('hgsubversion', 'startrev', default=configitem.dynamicdefault)
 configitem('hgsubversion', 'sqlitepragmas', default=list)
 # real default is False
 configitem('hgsubversion', 'failonmissing', default=configitem.dynamicdefault)
-
+# svn:externals support
+configitem('subrepos', 'hgsubversion:allowed', default=False)
 
 def _templatehelper(ctx, kw):
     '''
