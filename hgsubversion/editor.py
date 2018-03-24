@@ -633,7 +633,7 @@ class HgEditor(svnwrap.Editor):
         nodes = {}
         for path, copy in self._svncopies.iteritems():
             nodes.setdefault(copy.node, []).append((path, copy))
-        for node, copies in nodes.iteritems():
+        for unused_node, copies in nodes.iteritems():
             for path, copy in copies:
                 data, isexec, islink, copied = copy.resolve(self._getctx)
                 self.current.set(path, data, isexec, islink, copied)

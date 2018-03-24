@@ -1,22 +1,15 @@
 import compathacks
-import errno
 import re
 import os
 import urllib
 import json
 import gc
 
-from mercurial import cmdutil
 from mercurial import error
 from mercurial import hg
 from mercurial import node
 from mercurial import repair
 from mercurial import util as hgutil
-
-try:
-    from collections import deque
-except:
-    from mercurial.util import deque
 
 try:
     from mercurial import revset
@@ -28,8 +21,6 @@ try:
     smartset.baseset # force demandimport to load the module now
 except ImportError:
     smartset = None
-
-import maps
 
 ignoredfiles = set(['.hgtags', '.hgsvnexternals', '.hgsub', '.hgsubstate'])
 
@@ -348,7 +339,7 @@ def revset_fromsvn(repo, subset, x):
     '''``fromsvn()``
     Select changesets that originate from Subversion.
     '''
-    args = revset.getargs(x, 0, 0, "fromsvn takes no arguments")
+    revset.getargs(x, 0, 0, "fromsvn takes no arguments")
 
     meta = repo.svnmeta(skiperrorcheck=True)
     if not meta.revmapexists:

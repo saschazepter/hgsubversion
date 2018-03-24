@@ -18,8 +18,6 @@ For more information and instructions, see :hg:`help subversion`.
 testedwith = '3.7 3.8 3.9 4.0 4.1 4.2 4.3 4.4'
 
 import os
-import sys
-import traceback
 
 from mercurial import commands
 try:
@@ -368,23 +366,3 @@ def svnuuidkw(**args):
     return _templatehelper(args['ctx'], 'svnuuid')
 
 loadkeyword(templatekeyword)
-
-def listsvnkeys(repo):
-    keys = {}
-    repo = repo.local()
-    metadir = os.path.join(repo.path, 'svn')
-
-    if util.subversionmetaexists(repo.path):
-        w = repo.wlock()
-        try:
-            for key in util.pushkeyfiles:
-                fullpath = os.path.join(metadir, key)
-                if os.path.isfile(fullpath):
-                    data = open(fullpath).read()
-
-                    # Some of the files could be large, but also quite compressible
-                    keys[key] = base85.b85encode(zlib.compress(data))
-        finally:
-            w.release()
-
-    return keys

@@ -25,17 +25,12 @@ try:
 except ImportError:
     # hg 4.5 and earlier
     logcmdutil = None
-from mercurial import repair
-from mercurial import revset
 from mercurial import scmutil
 
-import inspect
-import layouts
 import replay
 import pushmod
 import stupid as stupidmod
 import svnwrap
-import svnrepo
 import util
 
 try:
