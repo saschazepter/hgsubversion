@@ -12,6 +12,7 @@ import unittest
 
 from mercurial import context
 from mercurial import commands
+from mercurial import error as hgerror
 from mercurial import hg
 from mercurial import node
 from mercurial import revlog
@@ -102,7 +103,7 @@ class PushTests(test_util.TestBase):
         old_tip = repo['tip'].node()
         try:
           self.pushrevisions()
-        except hgutil.Abort, e:
+        except hgerror.Abort, e:
           assert "pull again and rebase" in str(e)
         tip = self.repo['tip']
         self.assertEqual(tip.node(), old_tip)
@@ -131,7 +132,7 @@ class PushTests(test_util.TestBase):
         repo.wwrite('beta', 'something else', '')
         try:
             self.pushrevisions()
-        except hgutil.Abort:
+        except hgerror.Abort:
             pass
         tip = self.repo['tip']
         self.assertEqual(new_hash, tip.node())
@@ -657,7 +658,7 @@ class PushTests(test_util.TestBase):
         try:
             self.pushrevisions()
             assert False, 'This should have aborted!'
-        except hgutil.Abort, e:
+        except hgerror.Abort, e:
             self.assertEqual(e.args[0],
                              'Outgoing changesets parent is not at subversion '
                              'HEAD\n'

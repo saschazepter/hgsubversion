@@ -11,6 +11,7 @@ try:
 except ImportError:
     # We only *use* the exchange module in hg 3.2+, so this is safe
     pass
+from mercurial import error as hgerror
 from mercurial import patch
 from mercurial import hg
 from mercurial import util as hgutil
@@ -68,7 +69,7 @@ def parents(orig, ui, repo, *args, **opts):
     hashes = meta.revmap.hashes()
     ha = util.parentrev(ui, repo, meta, hashes)
     if ha.node() == node.nullid:
-        raise hgutil.Abort('No parent svn revision!')
+        raise hgerror.Abort('No parent svn revision!')
     displayer = cmdutil.show_changeset(ui, repo, opts, buffered=False)
     displayer.show(ha)
     return 0
@@ -432,7 +433,7 @@ def pull(repo, source, heads=[], force=False, meta=None):
             if meta.layout != 'single':
                 msg = ('branch cannot be specified for Subversion clones using '
                        'standard directory layout')
-                raise hgutil.Abort(msg)
+                raise hgerror.Abort(msg)
 
             meta.branchmap['default'] = meta.branch
 
@@ -446,7 +447,7 @@ def pull(repo, source, heads=[], force=False, meta=None):
 
             if start > 0:
                 if meta.layout == 'standard':
-                    raise hgutil.Abort('non-zero start revisions are only '
+                    raise hgerror.Abort('non-zero start revisions are only '
                                        'supported for single-directory clones.')
                 ui.note('starting at revision %d; any prior will be ignored\n'
                         % start)
@@ -518,7 +519,7 @@ def pull(repo, source, heads=[], force=False, meta=None):
                             ui.status('Got a 502, retrying (%s)\n' % tries)
                         else:
                             ui.traceback()
-                            raise hgutil.Abort(*e.args)
+                            raise hgerror.Abort(*e.args)
 
                 lastpulled = r.revnum
 

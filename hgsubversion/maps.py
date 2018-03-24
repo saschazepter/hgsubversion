@@ -255,7 +255,7 @@ class AuthorMap(BaseMap):
             retcode = process.poll()
             if retcode:
                 msg = 'map author command "%s" exited with error'
-                raise hgutil.Abort(msg % cmd)
+                raise error.Abort(msg % cmd)
             self[author] = result = output.strip()
         if not result:
             if self._defaultauthors:
@@ -264,7 +264,7 @@ class AuthorMap(BaseMap):
                 self._ui.debug(msg % (author, result))
             else:
                 msg = 'author %s has no entry in the author map!'
-                raise hgutil.Abort(msg % author)
+                raise error.Abort(msg % author)
         self._ui.debug('mapping author "%s" to "%s"\n' % (author, result))
         return result
 
@@ -302,7 +302,7 @@ class Tags(dict):
             raise error.Abort(
                 'tag map outdated, please run `hg svn rebuildmeta`')
         elif ver != self.VERSION:
-            raise hgutil.Abort('tagmap too new -- please upgrade')
+            raise error.Abort('tagmap too new -- please upgrade')
         for l in f:
             ha, revision, tag = l.split(' ', 2)
             revision = int(revision)
@@ -335,7 +335,7 @@ class Tags(dict):
 
     def __setitem__(self, tag, info):
         if not tag:
-            raise hgutil.Abort('tag cannot be empty')
+            raise error.Abort('tag cannot be empty')
         ha, revision = info
         f = open(self._filepath, 'a')
         f.write('%s %s %s\n' % (hex(ha), revision, tag))
@@ -429,7 +429,7 @@ class RevMap(dict):
             hgutil.unlinkpath(revmap._rowcountpath, ignoremissing=True)
             return self._readmapfile()
         if ver != self.VERSION:
-            raise hgutil.Abort('revmap too new -- please upgrade')
+            raise error.Abort('revmap too new -- please upgrade')
         return f
 
     @util.gcdisable
@@ -887,7 +887,7 @@ class FileMap(object):
         with open(self._filename) as f:
             ver = int(f.readline())
             if ver != self.VERSION:
-                raise hgutil.Abort('filemap too new -- please upgrade')
+                raise error.Abort('filemap too new -- please upgrade')
             self.load_fd(f, self._filename)
 
     def _write(self):

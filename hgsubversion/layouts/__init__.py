@@ -9,6 +9,7 @@ NB: this has a long way to go before it does everything it claims to
 
 """
 
+from mercurial import error as hgerror
 from mercurial import util as hgutil
 
 import custom
@@ -39,5 +40,5 @@ def layout_from_name(name, meta):
     """
 
     if name not in NAME_TO_CLASS:
-        raise hgutil.Abort('Unknown hgsubversion layout: %s' % name)
+        raise hgerror.Abort('Unknown hgsubversion layout: %s' % name)
     return NAME_TO_CLASS[name](meta)
