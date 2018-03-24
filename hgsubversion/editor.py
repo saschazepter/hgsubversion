@@ -4,6 +4,7 @@ import tempfile
 import shutil
 import os
 
+from mercurial import error as hgerror
 from mercurial import util as hgutil
 from mercurial import revlog
 from mercurial import node
@@ -575,7 +576,7 @@ class HgEditor(svnwrap.Editor):
 
         handler = svnwrap.apply_txdelta(base, target)
         if not callable(handler): # pragma: no cover
-            raise hgutil.Abort('Error in Subversion bindings: '
+            raise hgerror.Abort('Error in Subversion bindings: '
                                'cannot call handler!')
         def txdelt_window(window):
             try:
@@ -611,7 +612,7 @@ class HgEditor(svnwrap.Editor):
                 if e.args[1] == svnwrap.ERR_INCOMPLETE_DATA:
                     self.addmissing(path)
                 else: # pragma: no cover
-                    raise hgutil.Abort(*e.args)
+                    raise hgerror.Abort(*e.args)
             except: # pragma: no cover
                 self._exception_info = sys.exc_info()
                 raise

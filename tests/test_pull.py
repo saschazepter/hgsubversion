@@ -2,6 +2,7 @@ import test_util
 
 import os.path
 import subprocess
+from mercurial import error as hgerror
 from mercurial import node
 from mercurial import ui
 from mercurial import util as hgutil
@@ -47,7 +48,7 @@ class TestPull(test_util.TestBase):
         self.add_svn_rev(repo_path, {'trunk/alpha': 'Changed one way'})
         try:
             commands.pull(self.repo.ui, repo, update=True)
-        except hgutil.Abort:
+        except hgerror.Abort:
             # hg < 1.9 raised when crossing branches
             pass
         self.assertEqual(state, repo[None].parents())

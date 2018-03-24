@@ -3,6 +3,7 @@ import errno
 import re
 
 from mercurial import context
+from mercurial import error as hgerror
 from mercurial import node
 from mercurial import patch
 from mercurial import revlog
@@ -633,14 +634,14 @@ def branches_in_paths(meta, tbdelta, paths, revnum, checkpath, listdir,
 
 def convert_rev(ui, meta, svn, r, tbdelta, firstrun):
     if svnwrap.subversion_version >= (1, 9, 0):
-        raise hgutil.Abort(
+        raise hgerror.Abort(
             "hgsubversion doesn't support stupid mode with Subversion 1.9."
             ' Please email hgsubversion@googlegroups.com and let us know you'
             ' saw this, otherwise we may remove stupid mode entirely.')
     # this server fails at replay
 
     if meta.filemap:
-        raise hgutil.Abort('filemaps currently unsupported with stupid replay.')
+        raise hgerror.Abort('filemaps currently unsupported with stupid replay.')
 
     branches = branches_in_paths(meta, tbdelta, r.paths, r.revnum,
                                  svn.checkpath, svn.list_files, firstrun)

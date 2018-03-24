@@ -3,6 +3,7 @@ import os
 import tempfile
 
 from mercurial import context
+from mercurial import error as hgerror
 from mercurial import util as hgutil
 from mercurial import revlog
 from mercurial import node
@@ -164,7 +165,7 @@ class SVNMeta(object):
             rootlist = svn.list_dir('', revision=revision)
         except svnwrap.SubversionException, e:
             err = "%s (subversion error: %d)" % (e.args[0], e.args[1])
-            raise hgutil.Abort(err)
+            raise hgerror.Abort(err)
         if sum(map(lambda x: x in rootlist, ('branches', 'tags', 'trunk'))):
             layout = 'standard'
         else:
@@ -240,7 +241,7 @@ class SVNMeta(object):
             if subdir is None:
                 self.__subdir = stored_subdir
             elif subdir and subdir != stored_subdir:
-                raise hgutil.Abort('unable to work on a different path in the '
+                raise hgerror.Abort('unable to work on a different path in the '
                                    'repository')
             else:
                 self.__subdir = subdir
@@ -248,7 +249,7 @@ class SVNMeta(object):
             util.dump(subdir, subdirfile)
             self.__subdir = subdir
         elif not self._skiperror:
-            raise hgutil.Abort("hgsubversion metadata unavailable; "
+            raise hgerror.Abort("hgsubversion metadata unavailable; "
                                "please run 'hg svn rebuildmeta'")
 
     subdir = property(_get_subdir, _set_subdir, None,
@@ -265,13 +266,13 @@ class SVNMeta(object):
             stored_uuid = util.load(uuidfile)
             assert stored_uuid
             if uuid and uuid != stored_uuid:
-                raise hgutil.Abort('unable to operate on unrelated repository')
+                raise hgerror.Abort('unable to operate on unrelated repository')
             self.__uuid = uuid or stored_uuid
         elif uuid:
             util.dump(uuid, uuidfile)
             self.__uuid = uuid
         elif not self._skiperror:
-            raise hgutil.Abort("hgsubversion metadata unavailable; "
+            raise hgerror.Abort("hgsubversion metadata unavailable; "
                                "please run 'hg svn rebuildmeta'")
 
     uuid = property(_get_uuid, _set_uuid, None,
@@ -372,7 +373,7 @@ class SVNMeta(object):
         elif impl is None:
             return self._defaultrevmapclass
         else:
-            raise hgutil.Abort('unknown revmapimpl: %s' % impl)
+            raise hgerror.Abort('unknown revmapimpl: %s' % impl)
 
     def fixdate(self, date):
         if date is not None:

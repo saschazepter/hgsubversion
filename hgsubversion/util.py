@@ -270,7 +270,8 @@ def outgoing_revisions(repo, reverse_map, sourcerev):
         outgoing_rev_hashes.append(sourcerev.node())
         sourcerev = sourcerev.parents()
         if len(sourcerev) != 1:
-            raise hgutil.Abort("Sorry, can't find svn parent of a merge revision.")
+            raise error.Abort(
+                "Sorry, can't find svn parent of a merge revision.")
         sourcerev = sourcerev[0]
     if sourcerev.node() != node.nullid:
         return outgoing_rev_hashes
@@ -287,7 +288,8 @@ def outgoing_common_and_heads(repo, reverse_map, sourcerev):
            and sourcecx.node() != node.nullid):
         ps = sourcecx.parents()
         if len(ps) != 1:
-            raise hgutil.Abort("Sorry, can't find svn parent of a merge revision.")
+            raise error.Abort(
+                "Sorry, can't find svn parent of a merge revision.")
         sourcecx = ps[0]
     if sourcecx.node() != node.nullid:
         return ([sourcecx.node()], [sourcerev])
@@ -350,8 +352,8 @@ def revset_fromsvn(repo, subset, x):
 
     meta = repo.svnmeta(skiperrorcheck=True)
     if not meta.revmapexists:
-        raise hgutil.Abort("svn metadata is missing - "
-                           "run 'hg svn rebuildmeta' to reconstruct it")
+        raise error.Abort("svn metadata is missing - "
+                          "run 'hg svn rebuildmeta' to reconstruct it")
     tonode = repo.changelog.node
     hashes = meta.revmap.hashes()
     return subset.filter(lambda r: tonode(r) in hashes)
@@ -371,8 +373,8 @@ def revset_svnrev(repo, subset, x):
 
     meta = repo.svnmeta(skiperrorcheck=True)
     if not meta.revmapexists:
-        raise hgutil.Abort("svn metadata is missing - "
-                           "run 'hg svn rebuildmeta' to reconstruct it")
+        raise error.Abort("svn metadata is missing - "
+                          "run 'hg svn rebuildmeta' to reconstruct it")
     torev = repo.changelog.rev
     revs = revset.baseset(torev(r) for r in meta.revmap.revhashes(revnum))
     return subset & revs

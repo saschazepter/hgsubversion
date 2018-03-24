@@ -1,6 +1,7 @@
 import errno
 import traceback
 
+from mercurial import error as hgerror
 from mercurial import revlog
 from mercurial import node
 from mercurial import context
@@ -93,7 +94,7 @@ def _convert_rev(ui, meta, svn, r, tbdelta, firstrun):
     for f in files_to_commit:
         if not meta.is_path_valid(f):
             if failoninvalid:
-                raise hgutil.Abort('file %s should not be in commit list' % f)
+                raise hgerror.Abort('file %s should not be in commit list' % f)
             continue
         p, b = meta.split_branch_path(f)[:2]
         if b not in branch_batches:

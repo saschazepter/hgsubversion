@@ -51,7 +51,7 @@ def _buildmeta(ui, repo, args, partial=False, skipuuid=False):
         dest = args[0]
         validateuuid = True
     elif len(args) > 1:
-        raise hgutil.Abort('rebuildmeta takes 1 or no arguments')
+        raise error.Abort('rebuildmeta takes 1 or no arguments')
     url = repo.ui.expandpath(dest or repo.ui.config('paths', 'default-push') or
                              repo.ui.config('paths', 'default') or '')
 
@@ -196,7 +196,7 @@ def _buildmeta(ui, repo, args, partial=False, skipuuid=False):
                 if svn is None:
                     svn = svnrepo.svnremoterepo(ui, url).svn
                 if uuid != svn.uuid:
-                    raise hgutil.Abort('remote svn repository identifier '
+                    raise error.Abort('remote svn repository identifier '
                                        'does not match')
             meta.uuid = uuid
 
@@ -343,7 +343,7 @@ def genignore(ui, repo, force=False, **opts):
 
     ignpath = repo.wvfs.join('.hgignore')
     if not force and os.path.exists(ignpath):
-        raise hgutil.Abort('not overwriting existing .hgignore, try --force?')
+        raise error.Abort('not overwriting existing .hgignore, try --force?')
     svn = svnrepo.svnremoterepo(repo.ui).svn
     meta = repo.svnmeta()
     hashes = meta.revmap.hashes()
@@ -470,7 +470,7 @@ def svn(ui, repo, subcommand, *args, **opts):
         commandfunc = table[subcommand]
         return commandfunc(ui, args=args, repo=repo, **opts)
     except svnwrap.SubversionConnectionException, e:
-        raise hgutil.Abort(*e.args)
+        raise error.Abort(*e.args)
     except TypeError:
         tb = traceback.extract_tb(sys.exc_info()[2])
         if len(tb) == 1:
