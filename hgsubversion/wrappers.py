@@ -18,6 +18,13 @@ from mercurial import util as hgutil
 from mercurial import node
 from mercurial import i18n
 from mercurial import extensions
+try:
+    # hg 4.6 and later
+    from mercurial import logcmdutil
+    logcmdutil.changesetdisplayer
+except ImportError:
+    # hg 4.5 and earlier
+    logcmdutil = None
 from mercurial import repair
 from mercurial import revset
 from mercurial import scmutil
@@ -70,7 +77,11 @@ def parents(orig, ui, repo, *args, **opts):
     ha = util.parentrev(ui, repo, meta, hashes)
     if ha.node() == node.nullid:
         raise hgerror.Abort('No parent svn revision!')
-    displayer = cmdutil.show_changeset(ui, repo, opts, buffered=False)
+    if logcmdutil is not None:
+        displayer = logcmdutil.changesetdisplayer(
+            ui, repo, opts, buffered=False)
+    else:
+        displayer = cmdutil.show_changeset(ui, repo, opts, buffered=False)
     displayer.show(ha)
     return 0
 
