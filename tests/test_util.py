@@ -497,10 +497,9 @@ class TestBase(unittest.TestCase):
         self.hgrc = os.path.join(self.tmpdir, '.hgrc')
         os.environ['HGRCPATH'] = self.hgrc
         scmutil._rcpath = None
-        rc = open(self.hgrc, 'w')
-        rc.write('[ui]\nusername=test-user\n')
-        for l in '[extensions]', 'hgsubversion=':
-            print >> rc, l
+        with open(self.hgrc, 'w') as rc:
+            rc.write('[ui]\nusername=test-user\n')
+            rc.write('[extensions]\nhgsubversion=\n')
 
         self.repocount = 0
         self.wc_path = '%s/testrepo_wc' % self.tmpdir
