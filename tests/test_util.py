@@ -298,7 +298,7 @@ class _testui(ui.ui):
         return ui.ui.develwarn(self, msg, stacklevel=stacklevel,
                                *args, **kwargs)
 
-def testui(stupid=False, layout='auto', startrev=0):
+def testui(stupid=False, layout='auto', startrev=0, subrepo=False):
     u = _testui()
     bools = {True: 'true', False: 'false'}
     u.setconfig('ui', 'quiet', bools[True])
@@ -307,6 +307,7 @@ def testui(stupid=False, layout='auto', startrev=0):
     u.setconfig('hgsubversion', 'stupid', bools[stupid])
     u.setconfig('hgsubversion', 'layout', layout)
     u.setconfig('hgsubversion', 'startrev', startrev)
+    u.setconfig('subrepos', 'hgsubversion:allowed', subrepo)
     u.setconfig('devel', 'all-warnings', True)
     return u
 
@@ -544,8 +545,8 @@ class TestBase(unittest.TestCase):
 
         _verify_our_modules()
 
-    def ui(self, layout='auto'):
-        return testui(self.stupid, layout)
+    def ui(self, layout='auto', subrepo=False):
+        return testui(self.stupid, layout, subrepo=subrepo)
 
     def load_svndump(self, fixture_name):
         '''Loads an svnadmin dump into a fresh repo. Return the svn repo
@@ -603,13 +604,14 @@ class TestBase(unittest.TestCase):
         config = dict(config or {})
         if externals:
             config['hgsubversion.externals'] = str(externals)
+            config['subrepos.hgsubversion:allowed'] = 'true'
         for k,v in reversed(sorted(config.iteritems())):
             cmd[:0] = ['--config', '%s=%s' % (k, v)]
 
         r = dispatch(cmd)
         assert not r, 'fetch of %s failed' % projectpath
 
-        return hg.repository(testui(), self.wc_path)
+        return hg.repository(self.ui(subrepo=bool(externals)), self.wc_path)
 
     def load(self, fixture_name):
         if fixture_name.endswith('.svndump'):
@@ -654,7 +656,7 @@ class TestBase(unittest.TestCase):
     # define this as a property so that it reloads anytime we need it
     @property
     def repo(self):
-        return hg.repository(testui(), self.wc_path)
+        return hg.repository(self.ui(), self.wc_path)
 
     def pushrevisions(self, expected_extra_back=0):
         before = repolen(self.repo)
