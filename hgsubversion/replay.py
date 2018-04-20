@@ -144,7 +144,7 @@ def _convert_rev(ui, meta, svn, r, tbdelta, firstrun):
                 and not files):
                 continue
 
-        parentctx = meta.repo.changectx(parents[0])
+        parentctx = meta.repo[parents[0]]
         if tag:
             if parentctx.node() == node.nullid:
                 continue

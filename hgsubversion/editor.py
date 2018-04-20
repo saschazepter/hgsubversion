@@ -202,7 +202,7 @@ class HgEditor(svnwrap.Editor):
         # A mapping of file paths to batons
         self._openpaths = {}
         self._deleted = set()
-        self._getctx = hgutil.lrucachefunc(self.repo.changectx)
+        self._getctx = hgutil.lrucachefunc(self.repo.__getitem__)
         # A map from directory baton to path
         self._opendirs = {}
         self._missing = set()
