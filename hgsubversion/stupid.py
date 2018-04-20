@@ -374,7 +374,7 @@ def makecopyfinder(meta, r, branchpath):
         changeid = meta.get_parent_revision(svnrev + 1, branch, True)
         ctx = None
         if changeid != revlog.nullid:
-            ctx = meta.repo.changectx(changeid)
+            ctx = meta.repo[changeid]
         ctxs[svnrev] = ctx
         return ctx
 
