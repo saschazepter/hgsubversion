@@ -184,6 +184,7 @@ def diff(orig, ui, repo, *args, **opts):
             parent = repo[o_r[-1]].parents()[0]
         opts['rev'] = ['%s:.' % node.hex(parent.node()), ]
     node1, node2 = scmutil.revpair(repo, opts['rev'])
+    node1, node2 = node1.node(), node2.node()
     baserev, _junk = hashes.get(node1, (-1, 'junk'))
     newrev, _junk = hashes.get(node2, (-1, 'junk'))
     it = patch.diff(repo, node1, node2,
