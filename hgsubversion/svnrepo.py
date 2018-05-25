@@ -206,6 +206,10 @@ class svnremoterepo(peerrepository):
     def listkeys(self, namespace):
         return {}
 
+    def commandexecutor(self):
+        from mercurial.wireprotov1peer import peerexecutor
+        return peerexecutor(self)
+
     if peerapi == 1:
         def canpush(self):
             return True
