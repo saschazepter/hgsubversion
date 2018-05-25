@@ -13,18 +13,20 @@ from hgsubversion import compathacks
 from hgsubversion import svncommands
 from hgsubversion import svnrepo
 
+revsymbol = test_util.revsymbol
+
 class TestTags(test_util.TestBase):
     stupid_mode_tests = True
 
     def test_tags(self):
         repo = self._load_fixture_and_fetch('basic_tag_tests.svndump')
         self.assertEqual(sorted(repo.tags()), ['copied_tag', 'tag_r3', 'tip'])
-        self.assertEqual(repo['tag_r3'], repo['copied_tag'])
-        self.assertEqual(repo['tag_r3'].rev(), 1)
+        self.assertEqual(revsymbol(repo, 'tag_r3'), revsymbol(repo, 'copied_tag'))
+        self.assertEqual(revsymbol(repo,'tag_r3').rev(), 1)
 
     def test_remove_tag(self):
         repo = self._load_fixture_and_fetch('remove_tag_test.svndump')
-        self.assertEqual(repo['tag_r3'].rev(), 1)
+        self.assertEqual(revsymbol(repo, 'tag_r3').rev(), 1)
         self.assert_('copied_tag' not in repo.tags())
 
     def test_rename_tag(self):
@@ -50,15 +52,17 @@ rename a tag
     def test_branch_from_tag(self):
         repo = self._load_fixture_and_fetch('branch_from_tag.svndump')
         self.assert_('branch_from_tag' in compathacks.branchset(repo))
-        self.assertEqual(repo[1], repo['tag_r3'])
-        self.assertEqual(repo['branch_from_tag'].parents()[0], repo['copied_tag'])
+        self.assertEqual(repo[1], revsymbol(repo, 'tag_r3'))
+        self.assertEqual(revsymbol(repo, 'branch_from_tag').parents()[0],
+                         revsymbol(repo, 'copied_tag'))
 
     def test_tag_by_renaming_branch(self):
         repo = self._load_fixture_and_fetch('tag_by_rename_branch.svndump')
         branches = set(repo[h] for h in repo.heads())
         self.assert_('dummy' not in branches)
-        self.assertEqual(repo['dummy'], repo['tip'].parents()[0],
-                         '%r != %r[0]' % (repo['dummy'],
+        self.assertEqual(revsymbol(repo, 'dummy'),
+                         revsymbol(repo, 'tip').parents()[0],
+                         '%r != %r[0]' % (revsymbol(repo, 'dummy'),
                                               repo['tip'].parents()))
         extra = repo['tip'].extra().copy()
         extra.pop('convert_revision', None)
@@ -129,7 +133,7 @@ rename a tag
             'branch': 'magic',
             'convert_revision': 'svn:af82cc90-c2d2-43cd-b1aa-c8a78449440a/tags/will-edit@19'})
        self.assertEqual(willedit, repo.tags()['will-edit'])
-       self.assertEqual(sorted(repo['will-edit'].manifest().keys()),
+       self.assertEqual(sorted(revsymbol(repo, 'will-edit').manifest().keys()),
                         ['alpha', 'beta', 'gamma'])
        self.assertEqual(
            repo[alsoedit].extra(),
@@ -137,17 +141,17 @@ rename a tag
             'branch': 'magic',
             'convert_revision': 'svn:af82cc90-c2d2-43cd-b1aa-c8a78449440a/tags/also-edit@14'})
        self.assertEqual(repo[alsoedit].parents()[0].node(), repo.tags()['also-edit'])
-       self.assertEqual(sorted(repo['also-edit'].manifest().keys()),
+       self.assertEqual(sorted(revsymbol(repo, 'also-edit').manifest().keys()),
                         ['.hgtags', 'alpha', 'beta', 'delta', 'gamma', 'iota',
                          'lambda', 'omega'])
 
-       self.assertEqual(editlater, repo['edit-later'].node())
+       self.assertEqual(editlater, revsymbol(repo, 'edit-later').node())
        self.assertEqual(
            repo[closeme].extra(),
            {'close': '1',
             'branch': 'closeme',
             'convert_revision': 'svn:af82cc90-c2d2-43cd-b1aa-c8a78449440a/branches/closeme@17'})
-       self.assertEqual('alpha\nalpha\n', repo['edit-at-create']['alpha'].data())
+       self.assertEqual('alpha\nalpha\n', revsymbol(repo, 'edit-at-create')['alpha'].data())
 
     def test_tags_in_unusual_location(self):
         repo = self._load_fixture_and_fetch('tag_name_same_as_branch.svndump')

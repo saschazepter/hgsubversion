@@ -23,6 +23,8 @@ from hgsubversion import compathacks
 
 import time
 
+revsymbol = test_util.revsymbol
+
 
 class PushTests(test_util.TestBase):
     obsolete_mode_tests = True
@@ -44,7 +46,7 @@ class PushTests(test_util.TestBase):
                                                   copied=False)
             raise IOError()
         ctx = context.memctx(repo,
-                             (repo['default'].node(), node.nullid),
+                             (revsymbol(repo, 'default').node(), node.nullid),
                              'automated test',
                              [],
                              file_callback,
@@ -52,10 +54,10 @@ class PushTests(test_util.TestBase):
                              '2008-10-07 20:59:48 -0500',
                              {'branch': 'default', })
         new_hash = repo.commitctx(ctx)
-        hg.update(repo, repo['tip'].node())
-        old_tip = repo['tip'].node()
+        hg.update(repo, revsymbol(repo, 'tip').node())
+        old_tip = revsymbol(repo, 'tip').node()
         self.pushrevisions()
-        tip = self.repo['tip']
+        tip = revsymbol(self.repo, 'tip')
         self.assertEqual(tip.node(), old_tip)
 
     def test_push_add_of_added_upstream_gives_sane_error(self):
@@ -70,7 +72,7 @@ class PushTests(test_util.TestBase):
                                                   isexec=False,
                                                   copied=False)
             raise IOError()
-        p1 = repo['default'].node()
+        p1 = revsymbol(repo, 'default').node()
         ctx = context.memctx(repo,
                              (p1, node.nullid),
                              'automated test',
@@ -80,10 +82,10 @@ class PushTests(test_util.TestBase):
                              '2008-10-07 20:59:48 -0500',
                              {'branch': 'default', })
         new_hash = repo.commitctx(ctx)
-        hg.update(repo, repo['tip'].node())
-        old_tip = repo['tip'].node()
+        hg.update(repo, revsymbol(repo, 'tip').node())
+        old_tip = revsymbol(repo, 'tip').node()
         self.pushrevisions()
-        tip = self.repo['tip']
+        tip = revsymbol(self.repo, 'tip')
         self.assertNotEqual(tip.node(), old_tip)
 
         # This node adds the same file as the first one we added, and
@@ -99,13 +101,13 @@ class PushTests(test_util.TestBase):
                              '2008-10-07 20:59:48 -0500',
                              {'branch': 'default', })
         new_hash = repo.commitctx(ctx)
-        hg.update(repo, repo['tip'].node())
-        old_tip = repo['tip'].node()
+        hg.update(repo, revsymbol(repo, 'tip').node())
+        old_tip = revsymbol(repo, 'tip').node()
         try:
           self.pushrevisions()
         except hgerror.Abort, e:
           assert "pull again and rebase" in str(e)
-        tip = self.repo['tip']
+        tip = revsymbol(self.repo, 'tip')
         self.assertEqual(tip.node(), old_tip)
 
     def test_cant_push_with_changes(self):
@@ -119,7 +121,7 @@ class PushTests(test_util.TestBase):
                                               isexec=False,
                                               copied=False)
         ctx = context.memctx(repo,
-                             (repo['default'].node(), node.nullid),
+                             (revsymbol(repo, 'default').node(), node.nullid),
                              'automated test',
                              ['adding_file'],
                              file_callback,
@@ -127,14 +129,14 @@ class PushTests(test_util.TestBase):
                              '2008-10-07 20:59:48 -0500',
                              {'branch': 'default', })
         new_hash = repo.commitctx(ctx)
-        hg.update(repo, repo['tip'].node())
+        hg.update(repo, revsymbol(repo, 'tip').node())
         # Touch an existing file
         repo.wwrite('beta', 'something else', '')
         try:
             self.pushrevisions()
         except hgerror.Abort:
             pass
-        tip = self.repo['tip']
+        tip = revsymbol(self.repo, 'tip')
         self.assertEqual(new_hash, tip.node())
 
     def internal_push_over_svnserve(self, subdir='', commit=True):
@@ -193,8 +195,8 @@ class PushTests(test_util.TestBase):
                            self.wc_path, noupdate=True)
 
             repo = self.repo
-            old_tip = repo['tip'].node()
-            expected_parent = repo['default'].node()
+            old_tip = revsymbol(repo, 'tip').node()
+            expected_parent = revsymbol(repo, 'default').node()
             def file_callback(repo, memctx, path):
                 if path == 'adding_file':
                     return compathacks.makememfilectx(repo,
@@ -206,7 +208,7 @@ class PushTests(test_util.TestBase):
                                                       copied=False)
                 raise IOError(errno.EINVAL, 'Invalid operation: ' + path)
             ctx = context.memctx(repo,
-                                 parents=(repo['default'].node(), node.nullid),
+                                 parents=(revsymbol(repo, 'default').node(), node.nullid),
                                  text='automated test',
                                  files=['adding_file'],
                                  filectxfn=file_callback,
@@ -216,10 +218,10 @@ class PushTests(test_util.TestBase):
             new_hash = repo.commitctx(ctx)
             if not commit:
                 return # some tests use this test as an extended setup.
-            hg.update(repo, repo['tip'].node())
-            oldauthor = repo['tip'].user()
+            hg.update(repo, revsymbol(repo, 'tip').node())
+            oldauthor = revsymbol(repo, 'tip').user()
             commands.push(repo.ui, repo)
-            tip = self.repo['tip']
+            tip = revsymbol(self.repo, 'tip')
             self.assertNotEqual(oldauthor, tip.user())
             self.assertNotEqual(tip.node(), old_tip)
             self.assertEqual(tip.parents()[0].node(), expected_parent)
@@ -242,8 +244,8 @@ class PushTests(test_util.TestBase):
 
     def test_push_to_default(self, commit=True):
         repo = self.repo
-        old_tip = repo['tip'].node()
-        expected_parent = repo['default'].node()
+        old_tip = revsymbol(repo, 'tip').node()
+        expected_parent = revsymbol(repo, 'default').node()
         def file_callback(repo, memctx, path):
             if path == 'adding_file':
                 return compathacks.makememfilectx(repo,
@@ -255,7 +257,7 @@ class PushTests(test_util.TestBase):
                                                   copied=False)
             raise IOError(errno.EINVAL, 'Invalid operation: ' + path)
         ctx = context.memctx(repo,
-                             (repo['default'].node(), node.nullid),
+                             (revsymbol(repo, 'default').node(), node.nullid),
                              'automated test',
                              ['adding_file'],
                              file_callback,
@@ -265,9 +267,9 @@ class PushTests(test_util.TestBase):
         new_hash = repo.commitctx(ctx)
         if not commit:
             return # some tests use this test as an extended setup.
-        hg.update(repo, repo['tip'].node())
+        hg.update(repo, revsymbol(repo, 'tip').node())
         self.pushrevisions()
-        tip = self.repo['tip']
+        tip = revsymbol(self.repo, 'tip')
         self.assertNotEqual(tip.node(), old_tip)
         self.assertEqual(node.hex(tip.parents()[0].node()),
                          node.hex(expected_parent))
@@ -283,7 +285,7 @@ class PushTests(test_util.TestBase):
                                               islink=False,
                                               isexec=False,
                                               copied=False)
-        oldtiphash = self.repo['default'].node()
+        oldtiphash = revsymbol(self.repo, 'default').node()
         lr = self.repo
         ctx = context.memctx(lr,
                              (lr[0].node(), revlog.nullid,),
@@ -306,17 +308,17 @@ class PushTests(test_util.TestBase):
         repo = self.repo
         hg.update(repo, newhash)
         commands.push(repo.ui, repo)
-        self.assertEqual(self.repo['tip'].parents()[0].parents()[0].node(), oldtiphash)
-        self.assertEqual(self.repo['tip'].files(), ['delta', ])
-        self.assertEqual(sorted(self.repo['tip'].manifest().keys()),
+        self.assertEqual(revsymbol(self.repo, 'tip').parents()[0].parents()[0].node(), oldtiphash)
+        self.assertEqual(revsymbol(self.repo, 'tip').files(), ['delta', ])
+        self.assertEqual(sorted(revsymbol(self.repo, 'tip').manifest().keys()),
                          ['alpha', 'beta', 'delta', 'gamma'])
 
     def test_push_two_revs(self):
         # set up some work for us
         self.test_push_to_default(commit=False)
         repo = self.repo
-        old_tip = repo['tip'].node()
-        expected_parent = repo['tip'].parents()[0].node()
+        old_tip = revsymbol(repo, 'tip').node()
+        expected_parent = revsymbol(repo, 'tip').parents()[0].node()
         def file_callback(repo, memctx, path):
             if path == 'adding_file2':
                 return compathacks.makememfilectx(repo,
@@ -328,7 +330,7 @@ class PushTests(test_util.TestBase):
                                                   copied=False)
             raise IOError(errno.EINVAL, 'Invalid operation: ' + path)
         ctx = context.memctx(repo,
-                             (repo['default'].node(), node.nullid),
+                             (revsymbol(repo, 'default').node(), node.nullid),
                              'automated test',
                              ['adding_file2'],
                              file_callback,
@@ -336,9 +338,9 @@ class PushTests(test_util.TestBase):
                              '2008-10-07 20:59:48 -0500',
                              {'branch': 'default', })
         new_hash = repo.commitctx(ctx)
-        hg.update(repo, repo['tip'].node())
+        hg.update(repo, revsymbol(repo, 'tip').node())
         self.pushrevisions()
-        tip = self.repo['tip']
+        tip = revsymbol(self.repo, 'tip')
         self.assertNotEqual(tip.node(), old_tip)
         self.assertNotEqual(tip.parents()[0].node(), old_tip)
         self.assertEqual(tip.parents()[0].parents()[0].node(), expected_parent)
@@ -365,7 +367,7 @@ class PushTests(test_util.TestBase):
                                                   copied=False)
             raise IOError(errno.EINVAL, 'Invalid operation: ' + path)
         ctx = context.memctx(repo,
-                             (repo['the_branch'].node(), node.nullid),
+                             (revsymbol(repo, 'the_branch').node(), node.nullid),
                              'automated test',
                              ['adding_file'],
                              file_callback,
@@ -373,10 +375,10 @@ class PushTests(test_util.TestBase):
                              '2008-10-07 20:59:48 -0500',
                              {'branch': 'the_branch', })
         new_hash = repo.commitctx(ctx)
-        hg.update(repo, repo['tip'].node())
+        hg.update(repo, revsymbol(repo, 'tip').node())
         if push:
             self.pushrevisions()
-            tip = self.repo['tip']
+            tip = revsymbol(self.repo, 'tip')
             self.assertNotEqual(tip.node(), new_hash)
             self.assertEqual(tip['adding_file'].data(), 'foo')
             self.assertEqual(tip.branch(), 'the_branch')
@@ -408,18 +410,18 @@ class PushTests(test_util.TestBase):
                                 args=[test_util.fileurl(self.repo_path)])
 
 
-        hg.update(self.repo, self.repo['tip'].node())
-        oldnode = self.repo['tip'].hex()
+        hg.update(self.repo, revsymbol(self.repo, 'tip').node())
+        oldnode = revsymbol(self.repo, 'tip').hex()
         self.pushrevisions(expected_extra_back=1)
-        self.assertNotEqual(oldnode, self.repo['tip'].hex(), 'Revision was not pushed.')
+        self.assertNotEqual(oldnode, revsymbol(self.repo, 'tip').hex(), 'Revision was not pushed.')
 
     def test_delete_file(self):
         repo = self.repo
         def file_callback(repo, memctx, path):
             return compathacks.filectxfn_deleted(memctx, path)
-        old_files = set(repo['default'].manifest().keys())
+        old_files = set(revsymbol(repo, 'default').manifest().keys())
         ctx = context.memctx(repo,
-                             (repo['default'].node(), node.nullid),
+                             (revsymbol(repo, 'default').node(), node.nullid),
                              'automated test',
                              ['alpha'],
                              file_callback,
@@ -427,9 +429,9 @@ class PushTests(test_util.TestBase):
                              '2008-10-29 21:26:00 -0500',
                              {'branch': 'default', })
         new_hash = repo.commitctx(ctx)
-        hg.update(repo, repo['tip'].node())
+        hg.update(repo, revsymbol(repo, 'tip').node())
         self.pushrevisions()
-        tip = self.repo['tip']
+        tip = revsymbol(self.repo, 'tip')
         self.assertEqual(old_files,
                          set(tip.manifest().keys() + ['alpha']))
         self.assert_('alpha' not in tip.manifest())
@@ -448,7 +450,7 @@ class PushTests(test_util.TestBase):
                                                   copied=False)
             raise IOError(errno.EINVAL, 'Invalid operation: ' + path)
         ctx = context.memctx(repo,
-                             (repo['tip'].node(), node.nullid),
+                             (revsymbol(repo, 'tip').node(), node.nullid),
                              'message',
                              ['gamma', ],
                              file_callback,
@@ -456,11 +458,11 @@ class PushTests(test_util.TestBase):
                              '2008-10-29 21:26:00 -0500',
                              {'branch': 'default', })
         new_hash = repo.commitctx(ctx)
-        hg.clean(repo, repo['tip'].node())
+        hg.clean(repo, revsymbol(repo, 'tip').node())
         self.pushrevisions()
-        tip = self.repo['tip']
+        tip = revsymbol(self.repo, 'tip')
         self.assertNotEqual(tip.node(), new_hash)
-        self.assert_('@' in self.repo['tip'].user())
+        self.assert_('@' in revsymbol(self.repo, 'tip').user())
         self.assertEqual(tip['gamma'].flags(), 'x')
         self.assertEqual(tip['gamma'].data(), 'foo')
         self.assertEqual(sorted([x for x in tip.manifest().keys() if 'x' not in
@@ -481,7 +483,7 @@ class PushTests(test_util.TestBase):
                                                   copied=False)
             raise IOError(errno.EINVAL, 'Invalid operation: ' + path)
         ctx = context.memctx(repo,
-                             (repo['tip'].node(), node.nullid),
+                             (revsymbol(repo, 'tip').node(), node.nullid),
                              'message',
                              ['gamma', ],
                              file_callback,
@@ -489,11 +491,11 @@ class PushTests(test_util.TestBase):
                              '2008-10-29 21:26:00 -0500',
                              {'branch': 'default', })
         new_hash = repo.commitctx(ctx)
-        hg.update(repo, repo['tip'].node())
+        hg.update(repo, revsymbol(repo, 'tip').node())
         self.pushrevisions()
         # grab a new repo instance (self.repo is an @property functions)
         repo = self.repo
-        tip = repo['tip']
+        tip = revsymbol(repo, 'tip')
         self.assertNotEqual(tip.node(), new_hash)
         self.assertEqual(tip['gamma'].flags(), 'l')
         self.assertEqual(tip['gamma'].data(), 'foo')
@@ -513,7 +515,7 @@ class PushTests(test_util.TestBase):
             raise IOError(errno.EINVAL, 'Invalid operation: ' + path)
 
         ctx = context.memctx(repo,
-                             (repo['tip'].node(), node.nullid),
+                             (revsymbol(repo, 'tip').node(), node.nullid),
                              'message',
                              ['gamma', ],
                              file_callback2,
@@ -521,11 +523,11 @@ class PushTests(test_util.TestBase):
                              '2014-08-08 20:11:41 -0700',
                              {'branch': 'default', })
         repo.commitctx(ctx)
-        hg.update(repo, repo['tip'].node())
+        hg.update(repo, revsymbol(repo, 'tip').node())
         self.pushrevisions()
         # grab a new repo instance (self.repo is an @property functions)
         repo = self.repo
-        tip = repo['tip']
+        tip = revsymbol(repo, 'tip')
         self.assertEqual(tip['gamma'].flags(), 'l')
         self.assertEqual(tip['gamma'].data(), 'a'*129)
 
@@ -541,7 +543,7 @@ class PushTests(test_util.TestBase):
             raise IOError(errno.EINVAL, 'Invalid operation: ' + path)
 
         ctx = context.memctx(repo,
-                             (repo['tip'].node(), node.nullid),
+                             (revsymbol(repo, 'tip').node(), node.nullid),
                              'message',
                              ['gamma', ],
                              file_callback3,
@@ -549,10 +551,10 @@ class PushTests(test_util.TestBase):
                              '2014-08-08 20:16:25 -0700',
                              {'branch': 'default', })
         repo.commitctx(ctx)
-        hg.update(repo, repo['tip'].node())
+        hg.update(repo, revsymbol(repo, 'tip').node())
         self.pushrevisions()
         repo = self.repo
-        tip = repo['tip']
+        tip = revsymbol(repo, 'tip')
         self.assertEqual(tip['gamma'].flags(), 'l')
         self.assertEqual(tip['gamma'].data(), 'a' * 64 + 'b' * 65)
 
@@ -575,7 +577,7 @@ class PushTests(test_util.TestBase):
                                               isexec=execute,
                                               copied=False)
         ctx = context.memctx(repo,
-                             (repo['default'].node(), node.nullid),
+                             (revsymbol(repo, 'default').node(), node.nullid),
                              'message',
                              ['alpha', ],
                              file_callback,
@@ -583,9 +585,9 @@ class PushTests(test_util.TestBase):
                              '2008-1-1 00:00:00 -0500',
                              {'branch': 'default', })
         new_hash = repo.commitctx(ctx)
-        hg.update(repo, repo['tip'].node())
+        hg.update(repo, revsymbol(repo, 'tip').node())
         self.pushrevisions()
-        tip = self.repo['tip']
+        tip = revsymbol(self.repo, 'tip')
         self.assertNotEqual(tip.node(), new_hash)
         self.assertEqual(tip['alpha'].data(), 'foo')
         self.assertEqual(tip.parents()[0]['alpha'].flags(), '')
@@ -602,7 +604,7 @@ class PushTests(test_util.TestBase):
                                               isexec=execute,
                                               copied=False)
         ctx = context.memctx(repo,
-                             (repo['default'].node(), node.nullid),
+                             (revsymbol(repo, 'default').node(), node.nullid),
                              'mutate already-special file alpha',
                              ['alpha', ],
                              file_callback2,
@@ -610,9 +612,9 @@ class PushTests(test_util.TestBase):
                              '2008-1-1 00:00:00 -0500',
                              {'branch': 'default', })
         new_hash = repo.commitctx(ctx)
-        hg.update(repo, repo['tip'].node())
+        hg.update(repo, revsymbol(repo, 'tip').node())
         self.pushrevisions()
-        tip = self.repo['tip']
+        tip = revsymbol(self.repo, 'tip')
         self.assertNotEqual(tip.node(), new_hash)
         self.assertEqual(tip['alpha'].data(), 'bar')
         self.assertEqual(tip.parents()[0]['alpha'].flags(), expected_flags)
@@ -628,7 +630,7 @@ class PushTests(test_util.TestBase):
                                               isexec=False,
                                               copied=False)
         ctx = context.memctx(repo,
-                             (repo['default'].node(), node.nullid),
+                             (revsymbol(repo, 'default').node(), node.nullid),
                              'convert alpha back to regular file',
                              ['alpha', ],
                              file_callback3,
@@ -636,9 +638,9 @@ class PushTests(test_util.TestBase):
                              '2008-01-01 00:00:00 -0500',
                              {'branch': 'default', })
         new_hash = repo.commitctx(ctx)
-        hg.update(repo, repo['tip'].node())
+        hg.update(repo, revsymbol(repo, 'tip').node())
         self.pushrevisions()
-        tip = self.repo['tip']
+        tip = revsymbol(self.repo, 'tip')
         self.assertNotEqual(tip.node(), new_hash)
         self.assertEqual(tip['alpha'].data(), 'bar')
         self.assertEqual(tip.parents()[0]['alpha'].flags(), expected_flags)
@@ -648,7 +650,7 @@ class PushTests(test_util.TestBase):
         self.test_push_two_revs()
         changes = [('adding_file', 'adding_file', 'different_content',),
                    ]
-        par = self.repo['tip'].rev()
+        par = revsymbol(self.repo, 'tip').rev()
         self.commitchanges(changes, parent=par)
         self.pushrevisions()
         changes = [('adding_file', 'adding_file',
@@ -675,28 +677,28 @@ class PushTests(test_util.TestBase):
         # confused the dirstate and made it believe the file was deleted.
         fn = 'pi\xc3\xa8ce/test'
         changes = [(fn, fn, 'a')]
-        par = self.repo['tip'].rev()
+        par = revsymbol(self.repo, 'tip').rev()
         self.commitchanges(changes, parent=par)
         self.pushrevisions()
 
     def test_push_emptying_changeset(self):
-        r = self.repo['tip']
+        r = revsymbol(self.repo, 'tip')
         changes = [
                 ('alpha', None, None),
                 ('beta', None, None),
                 ]
-        parent = self.repo['tip'].rev()
+        parent = revsymbol(self.repo, 'tip').rev()
         self.commitchanges(changes, parent=parent)
         self.pushrevisions()
-        self.assertEqual(len(self.repo['tip'].manifest()), 0)
+        self.assertEqual(len(revsymbol(self.repo, 'tip').manifest()), 0)
 
         # Try to re-add a file after emptying the branch
         changes = [
                 ('alpha', 'alpha', 'alpha'),
                 ]
-        self.commitchanges(changes, parent=self.repo['tip'].rev())
+        self.commitchanges(changes, parent=revsymbol(self.repo, 'tip').rev())
         self.pushrevisions()
-        self.assertEqual(['alpha'], list(self.repo['tip'].manifest()))
+        self.assertEqual(['alpha'], list(revsymbol(self.repo, 'tip').manifest()))
 
     def test_push_without_pushing_children(self):
         '''
@@ -705,7 +707,7 @@ class PushTests(test_util.TestBase):
         '''
 
         oldlen = test_util.repolen(self.repo)
-        oldtiphash = self.repo['default'].node()
+        oldtiphash = revsymbol(self.repo, 'default').node()
 
         changes = [('gamma', 'gamma', 'sometext')]
         newhash1 = self.commitchanges(changes)
@@ -720,7 +722,7 @@ class PushTests(test_util.TestBase):
         self.assertEqual(test_util.repolen(self.repo), oldlen + 2)
 
         # verify that the first commit is pushed, and the second is not
-        commit2 = self.repo['tip']
+        commit2 = revsymbol(self.repo, 'tip')
         self.assertEqual(commit2.files(), ['delta', ])
         self.assertEqual(util.getsvnrev(commit2), None)
         commit1 = commit2.parents()[0]
@@ -736,7 +738,7 @@ class PushTests(test_util.TestBase):
         '''
 
         oldlen = test_util.repolen(self.repo)
-        oldtiphash = self.repo['default'].node()
+        oldtiphash = revsymbol(self.repo, 'default').node()
 
         changes = [('gamma', 'gamma', 'sometext')]
         newhash = self.commitchanges(changes)
@@ -751,7 +753,7 @@ class PushTests(test_util.TestBase):
         self.assertEqual(test_util.repolen(self.repo), oldlen + 2)
 
         # verify that both commits are pushed
-        commit1 = self.repo['tip']
+        commit1 = revsymbol(self.repo, 'tip')
         self.assertEqual(commit1.files(), ['delta', 'gamma'])
 
         prefix = 'svn:' + self.repo.svnmeta().uuid
@@ -764,7 +766,7 @@ class PushTests(test_util.TestBase):
 
     def test_push_in_subdir(self, commit=True):
         repo = self.repo
-        old_tip = repo['tip'].node()
+        old_tip = revsymbol(repo, 'tip').node()
         def file_callback(repo, memctx, path):
             if path == 'adding_file' or path == 'newdir/new_file':
                 testData = 'fooFirstFile'
@@ -779,7 +781,7 @@ class PushTests(test_util.TestBase):
                                                   copied=False)
             raise IOError(errno.EINVAL, 'Invalid operation: ' + path)
         ctx = context.memctx(repo,
-                             (repo['default'].node(), node.nullid),
+                             (revsymbol(repo, 'default').node(), node.nullid),
                              'automated test',
                              ['adding_file'],
                              file_callback,
@@ -790,7 +792,7 @@ class PushTests(test_util.TestBase):
         p = os.path.join(repo.root, "newdir")
         os.mkdir(p)
         ctx = context.memctx(repo,
-                             (repo['default'].node(), node.nullid),
+                             (revsymbol(repo, 'default').node(), node.nullid),
                              'automated test',
                              ['newdir/new_file'],
                              file_callback,
@@ -799,9 +801,9 @@ class PushTests(test_util.TestBase):
                              {'branch': 'default', })
         os.chdir(p)
         new_hash = repo.commitctx(ctx)
-        hg.update(repo, repo['tip'].node())
+        hg.update(repo, revsymbol(repo, 'tip').node())
         self.pushrevisions()
-        tip = self.repo['tip']
+        tip = revsymbol(self.repo, 'tip')
         self.assertNotEqual(tip.node(), old_tip)
         self.assertEqual(p, os.getcwd())
         self.assertEqual(tip['adding_file'].data(), 'fooFirstFile')
@@ -820,7 +822,7 @@ class PushTests(test_util.TestBase):
 
         self.test_push_to_branch(push=False)
         commands.push(ui, repo)
-        newctx = self.repo['.']
-        self.assertNotEqual(newctx.node(), self.repo['tip'].node())
+        newctx = revsymbol(self.repo, '.')
+        self.assertNotEqual(newctx.node(), revsymbol(self.repo, 'tip').node())
         self.assertEqual(newctx['adding_file'].data(), 'foo')
         self.assertEqual(newctx.branch(), 'the_branch')
