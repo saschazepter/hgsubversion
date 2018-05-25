@@ -12,6 +12,8 @@ from mercurial import ui
 
 from hgsubversion import compathacks
 
+revsymbol = test_util.revsymbol
+
 class TestSingleDirClone(test_util.TestBase):
     stupid_mode_tests = True
 
@@ -36,7 +38,7 @@ class TestSingleDirClone(test_util.TestBase):
                                             layout='auto')
         self.assertEqual(compathacks.branchset(repo),
                          set(['default', 'branch_from_tag']))
-        oldmanifest = test_util.filtermanifest(repo['default'].manifest().keys())
+        oldmanifest = test_util.filtermanifest(revsymbol(repo, 'default').manifest().keys())
         # remove standard layout
         shutil.rmtree(self.wc_path)
         # try again with subdir to get single dir clone
@@ -44,7 +46,7 @@ class TestSingleDirClone(test_util.TestBase):
                                             layout='auto',
                                             subdir='trunk')
         self.assertEqual(compathacks.branchset(repo), set(['default', ]))
-        self.assertEqual(repo['default'].manifest().keys(), oldmanifest)
+        self.assertEqual(revsymbol(repo, 'default').manifest().keys(), oldmanifest)
 
     def test_clone_subdir_is_file_prefix(self):
         FIXTURE = 'subdir_is_file_prefix.svndump'

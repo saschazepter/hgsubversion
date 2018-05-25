@@ -8,6 +8,8 @@ from mercurial import node
 
 from hgsubversion import compathacks
 
+revsymbol = test_util.revsymbol
+
 class TestFetchBranches(test_util.TestBase):
     stupid_mode_tests = True
 
@@ -46,44 +48,44 @@ class TestFetchBranches(test_util.TestBase):
 
     def test_unorderedbranch(self):
         repo = self._load_fixture_and_fetch('unorderedbranch.svndump')
-        r = repo['branch']
+        r = revsymbol(repo, 'branch')
         self.assertEqual(0, r.parents()[0].rev())
         self.assertEqual(['a', 'c', 'z'], sorted(r.manifest()))
 
     def test_renamed_branch_to_trunk(self):
         repo = self._load_fixture_and_fetch('branch_rename_to_trunk.svndump')
-        self.assertEqual(repo['default'].parents()[0].branch(), 'dev_branch')
-        self.assert_('iota' in repo['default'])
-        self.assertEqual(repo['old_trunk'].parents()[0].branch(), 'default')
-        self.assert_('iota' not in repo['old_trunk'])
+        self.assertEqual(revsymbol(repo, 'default').parents()[0].branch(), 'dev_branch')
+        self.assert_('iota' in revsymbol(repo, 'default'))
+        self.assertEqual(revsymbol(repo, 'old_trunk').parents()[0].branch(), 'default')
+        self.assert_('iota' not in revsymbol(repo, 'old_trunk'))
         expected = ['default', 'old_trunk']
         self.assertEqual(self.openbranches(repo), expected)
 
     def test_replace_trunk_with_branch(self):
         repo = self._load_fixture_and_fetch('replace_trunk_with_branch.svndump')
-        self.assertEqual(repo['default'].parents()[0].branch(), 'test')
-        self.assertEqual(repo['tip'].branch(), 'default')
-        self.assertEqual(repo['tip'].extra().get('close'), '1')
+        self.assertEqual(revsymbol(repo, 'default').parents()[0].branch(), 'test')
+        self.assertEqual(revsymbol(repo, 'tip').branch(), 'default')
+        self.assertEqual(revsymbol(repo, 'tip').extra().get('close'), '1')
         self.assertEqual(self.openbranches(repo), ['default'])
 
     def test_copybeforeclose(self):
         repo = self._load_fixture_and_fetch('copybeforeclose.svndump')
-        self.assertEqual(repo['tip'].branch(), 'test')
-        self.assertEqual(repo['test'].extra().get('close'), '1')
-        self.assertEqual(repo['test']['b'].data(), 'a\n')
+        self.assertEqual(revsymbol(repo, 'tip').branch(), 'test')
+        self.assertEqual(revsymbol(repo, 'test').extra().get('close'), '1')
+        self.assertEqual(revsymbol(repo, 'test')['b'].data(), 'a\n')
 
     def test_copyafterclose(self):
         repo = self._load_fixture_and_fetch('copyafterclose.svndump')
-        self.assertEqual(repo['tip'].branch(), 'test')
-        self.assert_('file' in repo['test'])
-        self.assertEqual(repo['test']['file'].data(), 'trunk2\n')
-        self.assert_('dir/file' in repo['test'])
-        self.assertEqual(repo['test']['dir/file'].data(), 'trunk2\n')
+        self.assertEqual(revsymbol(repo, 'tip').branch(), 'test')
+        self.assert_('file' in revsymbol(repo, 'test'))
+        self.assertEqual(revsymbol(repo, 'test')['file'].data(), 'trunk2\n')
+        self.assert_('dir/file' in revsymbol(repo, 'test'))
+        self.assertEqual(revsymbol(repo, 'test')['dir/file'].data(), 'trunk2\n')
 
 
     def test_branch_create_with_dir_delete_works(self):
         repo = self._load_fixture_and_fetch('branch_create_with_dir_delete.svndump')
-        self.assertEqual(sorted(repo['tip'].manifest().keys()),
+        self.assertEqual(sorted(revsymbol(repo, 'tip').manifest().keys()),
                          ['alpha', 'beta', 'gamma', 'iota', ])
 
     def test_branch_tip_update_to_default(self):
@@ -115,13 +117,13 @@ class TestFetchBranches(test_util.TestBase):
         openb, closedb = self.branches(repo)
         self.assertEqual(openb, [])
         self.assertEqual(closedb, ['dev_branch'])
-        self.assertEqual(list(repo['dev_branch']), ['foo'])
+        self.assertEqual(list(revsymbol(repo, 'dev_branch')), ['foo'])
 
     def test_replace_branch_with_branch(self):
         repo = self._load_fixture_and_fetch('replace_branch_with_branch.svndump')
         self.assertEqual(7, test_util.repolen(repo))
         # tip is former topological branch1 being closed
-        ctx = repo['tip']
+        ctx = revsymbol(repo, 'tip')
         self.assertEqual('1', ctx.extra().get('close', '0'))
         self.assertEqual('branch1', ctx.branch())
         # r5 is where the replacement takes place

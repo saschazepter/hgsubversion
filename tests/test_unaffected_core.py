@@ -10,6 +10,8 @@ from mercurial import hg
 from mercurial import node
 from mercurial import ui
 
+revsymbol = test_util.revsymbol
+
 def _dispatch(ui, cmd):
     assert '--quiet' in cmd
     try:
@@ -91,4 +93,4 @@ class TestMercurialCore(test_util.TestBase):
 
         repo2 = hg.repository(ui, self.wc_path + '2')
 
-        self.assertEqual(repo[branch].hex(), repo2['.'].hex())
+        self.assertEqual(revsymbol(repo, branch).hex(), revsymbol(repo2, '.').hex())

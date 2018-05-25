@@ -10,6 +10,8 @@ from mercurial import hg
 from mercurial import node
 from mercurial import ui
 
+revsymbol = test_util.revsymbol
+
 from hgsubversion import compathacks
 
 class TestSingleDirPush(test_util.TestBase):
@@ -157,7 +159,7 @@ class TestSingleDirPush(test_util.TestBase):
         parent = repo['tip'].node()
         commit_to_branch('default', parent)
         commit_to_branch('foo', parent)
-        hg.update(repo, repo['foo'].node())
+        hg.update(repo, revsymbol(repo, 'foo').node())
         self.pushrevisions()
         repo = self.repo # repo is outdated after the rebase happens, refresh
         self.assertTrue('foo' in test_util.svnls(repo_path, ''))
@@ -165,7 +167,7 @@ class TestSingleDirPush(test_util.TestBase):
         # Have to cross to another branch head, so hg.update doesn't work
         commands.update(self.ui(),
                         self.repo,
-                        self.repo.branchheads('default')[1],
+                        node.hex(self.repo.branchheads('default')[1]),
                         clean=True)
         self.pushrevisions()
         self.assertTrue('default' in test_util.svnls(repo_path, ''))

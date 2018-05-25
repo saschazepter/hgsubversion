@@ -15,6 +15,8 @@ from hgsubversion import svncommands
 from hgsubversion import util
 from hgsubversion import verify
 
+revsymbol = test_util.revsymbol
+
 class MapTests(test_util.TestBase):
     stupid_mode_tests = True
 
@@ -46,7 +48,7 @@ class MapTests(test_util.TestBase):
                        self.wc_path, authors=self.authors)
         self.assertEqual(self.repo[0].user(),
                          'Augie Fackler <durin42@gmail.com>')
-        self.assertEqual(self.repo['tip'].user(),
+        self.assertEqual(revsymbol(self.repo, 'tip').user(),
                         'evil@5b65bade-98f3-4993-a01f-b7a6710da339')
 
     def test_author_map_closing_author(self):
@@ -60,7 +62,7 @@ class MapTests(test_util.TestBase):
                        self.wc_path, authors=self.authors)
         self.assertEqual(self.repo[0].user(),
                          'Augie@5b65bade-98f3-4993-a01f-b7a6710da339')
-        self.assertEqual(self.repo['tip'].user(),
+        self.assertEqual(revsymbol(self.repo, 'tip').user(),
                         'Testy <test@test>')
 
     def test_author_map_no_author(self):
@@ -114,7 +116,7 @@ class MapTests(test_util.TestBase):
                        self.wc_path, authors=self.authors)
         self.assertEqual(self.repo[0].user(),
                          'Augie Fackler <durin42@gmail.com>')
-        self.assertEqual(self.repo['tip'].user(),
+        self.assertEqual(revsymbol(self.repo, 'tip').user(),
                         'evil@5b65bade-98f3-4993-a01f-b7a6710da339')
 
     def test_author_map_mapauthorscmd(self):
@@ -124,7 +126,7 @@ class MapTests(test_util.TestBase):
         commands.clone(ui, test_util.fileurl(repo_path),
                        self.wc_path)
         self.assertEqual(self.repo[0].user(), 'svn: Augie')
-        self.assertEqual(self.repo['tip'].user(), 'svn: evil')
+        self.assertEqual(revsymbol(self.repo, 'tip').user(), 'svn: evil')
 
     def _loadwithfilemap(self, svndump, filemapcontent,
             failonmissing=True):
@@ -145,14 +147,14 @@ class MapTests(test_util.TestBase):
         repo = self._loadwithfilemap('replace_trunk_with_branch.svndump',
             "include alpha\n")
         self.assertEqual(node.hex(repo[0].node()), '88e2c7492d83e4bf30fbb2dcbf6aa24d60ac688d')
-        self.assertEqual(node.hex(repo['default'].node()), 'e524296152246b3837fe9503c83b727075835155')
+        self.assertEqual(node.hex(revsymbol(repo, 'default').node()), 'e524296152246b3837fe9503c83b727075835155')
 
     @test_util.requiresreplay
     def test_file_map_exclude(self):
         repo = self._loadwithfilemap('replace_trunk_with_branch.svndump',
             "exclude alpha\n")
         self.assertEqual(node.hex(repo[0].node()), '2c48f3525926ab6c8b8424bcf5eb34b149b61841')
-        self.assertEqual(node.hex(repo['default'].node()), 'b37a3c0297b71f989064d9b545b5a478bbed7cc1')
+        self.assertEqual(node.hex(revsymbol(repo, 'default').node()), 'b37a3c0297b71f989064d9b545b5a478bbed7cc1')
 
     @test_util.requiresreplay
     def test_file_map_rule_order(self):
@@ -163,7 +165,7 @@ class MapTests(test_util.TestBase):
         # because it's excluded after the root directory.
         self.assertEqual(sorted(self.repo[0].manifest().keys()),
                          ['alpha', 'beta'])
-        self.assertEqual(sorted(self.repo['default'].manifest().keys()),
+        self.assertEqual(sorted(revsymbol(self.repo, 'default').manifest().keys()),
                          ['alpha', 'beta'])
 
     @test_util.requiresreplay
@@ -368,7 +370,7 @@ class MapTests(test_util.TestBase):
     def test_empty_log_message(self):
         repo, repo_path = self.load_and_fetch('empty-log-message.svndump')
 
-        self.assertEqual(repo['tip'].description(), '')
+        self.assertEqual(revsymbol(repo, 'tip').description(), '')
 
         test_util.rmtree(self.wc_path)
 
@@ -376,4 +378,4 @@ class MapTests(test_util.TestBase):
         ui.setconfig('hgsubversion', 'defaultmessage', 'blyf')
         commands.clone(ui, test_util.fileurl(repo_path), self.wc_path)
 
-        self.assertEqual(self.repo['tip'].description(), 'blyf')
+        self.assertEqual(revsymbol(self.repo, 'tip').description(), 'blyf')
