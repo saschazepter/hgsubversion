@@ -49,6 +49,13 @@ from hgsubversion import svnwrap
 from hgsubversion import util
 from hgsubversion import svnwrap
 
+try:
+    revsymbol = scmutil.revsymbol
+except AttributeError:
+    # Pre hg 4.6 way of resolving a symbol
+    def revsymbol(repo, symbol):
+        return repo[symbol]
+
 # Documentation for Subprocess.Popen() says:
 #   "Note that on Windows, you cannot set close_fds to true and
 #   also redirect the standard handles by setting stdin, stdout or
@@ -225,7 +232,7 @@ def repolen(repo, svnonly=False):
         revs -= obsolete.getrevs(repo, 'obsolete')
 
     if svnonly:
-        revs = set(r for r in revs if util.getsvnrev(repo[r]))
+        revs = set(r for r in revs if util.getsvnrev(revsymbol(repo, r)))
 
     return len(revs)
 
@@ -697,7 +704,10 @@ class TestBase(unittest.TestCase):
         - (source, None, None) to remove source.
         """
         repo = self.repo
-        parentctx = repo[parent]
+        if isinstance(parent, int):
+            parentctx = repo[parent]
+        else:
+            parentctx = revsymbol(repo, parent)
 
         changed, removed = [], []
         for source, dest, newdata in changes:

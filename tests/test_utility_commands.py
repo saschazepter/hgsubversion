@@ -19,6 +19,8 @@ from hgsubversion import verify
 from hgsubversion import wrappers
 from hgsubversion import compathacks
 
+revsymbol = test_util.revsymbol
+
 expected_info_output = '''URL: %(repourl)s/%(branch)s
 Repository Root: %(repourl)s
 Repository UUID: df2126f7-00ab-4d49-b42c-7e981dde0bcf
@@ -44,7 +46,7 @@ class UtilityTests(test_util.TestBase):
         else:
             config = {}
         repo, repo_path = self.load_and_fetch('two_heads.svndump', config=config)
-        hg.update(self.repo, 'the_branch')
+        hg.update(self.repo, revsymbol(self.repo, 'the_branch'))
         u = self.ui()
         u.pushbuffer()
         svncommands.info(u, self.repo)
@@ -56,7 +58,7 @@ class UtilityTests(test_util.TestBase):
                      'rev': 5,
                      })
         self.assertMultiLineEqual(actual, expected)
-        hg.update(self.repo, 'default')
+        hg.update(self.repo, revsymbol(self.repo, 'default'))
         u.pushbuffer()
         svncommands.info(u, self.repo)
         actual = u.popbuffer()
@@ -67,7 +69,7 @@ class UtilityTests(test_util.TestBase):
                      'rev': 6,
                      })
         self.assertMultiLineEqual(actual, expected)
-        hg.update(self.repo, 'default')
+        hg.update(self.repo, revsymbol(self.repo, 'default'))
         u.pushbuffer()
         svncommands.info(u, self.repo, rev=3)
         actual = u.popbuffer()
@@ -83,7 +85,7 @@ class UtilityTests(test_util.TestBase):
         repo2 = hg.repository(u, destpath)
         repo2.ui.setconfig('paths', 'default-push',
                            self.repo.ui.config('paths', 'default'))
-        hg.update(repo2, 'default')
+        hg.update(repo2, revsymbol(self.repo, 'default'))
         svncommands.rebuildmeta(u, repo2, [])
         u.pushbuffer()
         svncommands.info(u, repo2)
@@ -160,7 +162,7 @@ class UtilityTests(test_util.TestBase):
         self._load_fixture_and_fetch('two_heads.svndump')
         u = self.ui()
         u.pushbuffer()
-        parents = (self.repo['the_branch'].node(), revlog.nullid,)
+        parents = (revsymbol(self.repo, 'the_branch').node(), revlog.nullid,)
         def filectxfn(repo, memctx, path):
             return compathacks.makememfilectx(repo,
                                               memctx=memctx,
@@ -184,7 +186,7 @@ class UtilityTests(test_util.TestBase):
         actual = u.popbuffer()
         self.assertEqual(actual, '3:4e256962fc5d\n')
 
-        hg.update(self.repo, 'default')
+        hg.update(self.repo, revsymbol(self.repo, 'default'))
 
         # Make sure styles work
         u.pushbuffer()
@@ -206,7 +208,7 @@ class UtilityTests(test_util.TestBase):
     def test_outgoing_output(self):
         repo, repo_path = self.load_and_fetch('two_heads.svndump')
         u = self.ui()
-        parents = (self.repo['the_branch'].node(), revlog.nullid,)
+        parents = (revsymbol(self.repo, 'the_branch').node(), revlog.nullid,)
         def filectxfn(repo, memctx, path):
             return compathacks.makememfilectx(repo,
                                               memctx=memctx,
@@ -229,9 +231,9 @@ class UtilityTests(test_util.TestBase):
         u.pushbuffer()
         commands.outgoing(u, self.repo, repourl(repo_path))
         actual = u.popbuffer()
-        self.assertTrue(node.hex(self.repo['localbranch'].node())[:8] in actual)
+        self.assertTrue(node.hex(revsymbol(self.repo, 'localbranch').node())[:8] in actual)
         self.assertEqual(actual.strip(), '5:6de15430fa20')
-        hg.update(self.repo, 'default')
+        hg.update(self.repo, revsymbol(self.repo, 'default'))
         u.pushbuffer()
         commands.outgoing(u, self.repo, repourl(repo_path))
         actual = u.popbuffer()
