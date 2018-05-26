@@ -352,8 +352,12 @@ def _verify_our_modules():
 
 def hgclone(ui, source, dest, update=True, rev=None):
     if getattr(hg, 'peer', None):
-        # Since 1.9 (d976542986d2)
-        src, dest = hg.clone(ui, {}, source, dest, update=update, rev=rev)
+        try:
+            # Since 1.9 (d976542986d2)
+            src, dest = hg.clone(ui, {}, source, dest, update=update, rev=rev)
+        except TypeError:
+            # hg 4.6+ wants revs instead of rev
+            src, dest = hg.clone(ui, {}, source, dest, update=update, revs=rev)
     else:
         src, dest = hg.clone(ui, source, dest, update=update, rev=rev)
     return src, dest
