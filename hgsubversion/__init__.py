@@ -32,14 +32,24 @@ from mercurial import help
 from mercurial import hg
 from mercurial import localrepo
 from mercurial import util as hgutil
-from mercurial import demandimport
-demandimport.ignore.extend([
-    'svn',
-    'svn.client',
-    'svn.core',
-    'svn.delta',
-    'svn.ra',
+try:
+    from mercurial import demandimport
+    demandimport.ignore.extend([
+        'svn',
+        'svn.client',
+        'svn.core',
+        'svn.delta',
+        'svn.ra',
     ])
+except (ImportError, AttributeError):
+    from hgdemandimport import demandimport
+    demandimport.ignores |= {
+        'svn',
+        'svn.client',
+        'svn.core',
+        'svn.delta',
+        'svn.ra',
+    }
 
 from mercurial import revset
 from mercurial import subrepo
