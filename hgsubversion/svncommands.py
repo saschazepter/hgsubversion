@@ -9,6 +9,7 @@ from mercurial import node
 from mercurial import util as hgutil
 from mercurial import error
 
+import compathacks
 import svnwrap
 import svnrepo
 import util
@@ -403,8 +404,9 @@ Last Changed Date: %(date)s\n''' %
                'author': author,
                'revision': r,
                # TODO I'd like to format this to the user's local TZ if possible
-               'date': hgutil.datestr(parent.date(),
-                                      '%Y-%m-%d %H:%M:%S %1%2 (%a, %d %b %Y)')
+               'date': compathacks.datestr(
+                   parent.date(),
+                   '%Y-%m-%d %H:%M:%S %1%2 (%a, %d %b %Y)')
               })
 
 
