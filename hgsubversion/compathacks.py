@@ -152,3 +152,15 @@ class _funcregistrarbase(object):
         """Execute exra setup for registered function, if needed
         """
         pass
+
+try:
+    binary = util.binary
+except AttributeError:
+    from mercurial.utils import stringutil
+    binary = stringutil.binary
+
+try:
+    datestr = util.datestr
+except AttributeError:
+    from mercurial.utils import dateutil
+    datestr = dateutil.datestr

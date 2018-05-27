@@ -1,6 +1,7 @@
 from mercurial import error as hgerror
 from mercurial import util as hgutil
 
+import compathacks
 import svnwrap
 import svnexternals
 import util
@@ -123,7 +124,7 @@ def commit(ui, repo, rev_ctx, meta, base_revision, svn):
                 props.setdefault(file, {})['svn:executable'] = '*'
             if 'l' in fctx.flags():
                 props.setdefault(file, {})['svn:special'] = '*'
-            isbinary = hgutil.binary(new_data)
+            isbinary = compathacks.binary(new_data)
             if isbinary:
                 props.setdefault(file, {})['svn:mime-type'] = 'application/octet-stream'
 
@@ -151,7 +152,7 @@ def commit(ui, repo, rev_ctx, meta, base_revision, svn):
                     base_data = 'link ' + base_data
                     if 'l' not in rev_ctx.filectx(file).flags():
                         props.setdefault(file, {})['svn:special'] = None
-                if hgutil.binary(base_data) and not isbinary:
+                if compathacks.binary(base_data) and not isbinary:
                     props.setdefault(file, {})['svn:mime-type'] = None
                 action = 'modify'
         else:
