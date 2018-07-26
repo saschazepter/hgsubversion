@@ -87,8 +87,8 @@ class TestBasicRepoLayout(test_util.TestBase):
         repo = self._load_fixture_and_fetch('file_mixed_with_branches.svndump')
         self.assertEqual(node.hex(revsymbol(repo, 'default').node()),
                          '434ed487136c1b47c1e8f952edb4dc5a8e6328df')
-        assert 'README' not in repo
-        assert '../branches' not in repo
+        assert 'README' not in repo['.']
+        assert '../branches' not in repo['.']
 
     def test_files_copied_from_outside_btt(self):
         repo = self._load_fixture_and_fetch(
