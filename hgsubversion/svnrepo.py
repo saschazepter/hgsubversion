@@ -115,7 +115,7 @@ def generate_repo_class(ui, repo):
 
         @remotesvn
         def findoutgoing(self, remote, base=None, heads=None, force=False):
-            return wrappers.findoutgoing(repo, remote, heads, force)
+            return wrappers.findoutgoing(self, remote, heads, force)
 
         def svnmeta(self, uuid=None, subdir=None, skiperrorcheck=False):
             return svnmeta.SVNMeta(self, uuid, subdir, skiperrorcheck)
