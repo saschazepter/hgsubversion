@@ -477,6 +477,7 @@ def pull(repo, source, heads=[], force=False, meta=None):
             total = svn.HEAD - start
         lastpulled = None
 
+        lock = meta.repo.lock()
         try:
             # start converting revisions
             firstrun = True
@@ -534,6 +535,8 @@ def pull(repo, source, heads=[], force=False, meta=None):
 
         except KeyboardInterrupt:
             ui.traceback()
+        finally:
+            lock.release()
     finally:
         if total is not None:
             ui.progress('pull', None, total=total)
