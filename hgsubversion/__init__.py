@@ -214,7 +214,7 @@ svncommandopts = [
     ('', 'force', False, 'force an operation to happen'),
     ('', 'username', '', 'username for authentication'),
     ('', 'password', '', 'password for authentication'),
-    ('r', 'rev', '', 'Mercurial revision'),
+    ('r', 'rev', [], 'Mercurial revision'),
     ('', 'unsafe-skip-uuid-check', False,
      'skip repository uuid check in rebuildmeta'),
 ]
