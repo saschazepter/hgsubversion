@@ -248,7 +248,10 @@ def instance(ui, url, create, intents=None):
     if url.startswith('http://') or url.startswith('https://'):
         try:
             # may yield a bogus 'real URL...' message
-            return httppeer.instance(ui, url, create, intents=intents)
+            try:
+                return httppeer.instance(ui, url, create, intents=intents)
+            except TypeError:
+                return httppeer.instance(ui, url, create)   # old mercurial versions don'T have that parameter
         except error.RepoError:
             ui.traceback()
             ui.note('(falling back to Subversion support)\n')
