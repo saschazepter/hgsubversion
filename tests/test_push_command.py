@@ -25,6 +25,10 @@ import time
 
 revsymbol = test_util.revsymbol
 
+try:
+    lookuperror = revlog.LookupError
+except AttributeError:
+    lookuperror = hgerror.LookupError
 
 class PushTests(test_util.TestBase):
     obsolete_mode_tests = True
@@ -350,7 +354,7 @@ class PushTests(test_util.TestBase):
         try:
             self.assertEqual(tip.parents()[0]['adding_file2'].data(), 'foo')
             assert False, "this is impossible, adding_file2 should not be in this manifest."
-        except revlog.LookupError, e:
+        except lookuperror, e:
             pass
         self.assertEqual(tip.branch(), 'default')
 
