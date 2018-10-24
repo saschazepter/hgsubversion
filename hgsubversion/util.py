@@ -224,8 +224,9 @@ def parseurl(url, heads=[]):
 
 
 class PrefixMatch(object):
-    def __init__(self, prefix):
+    def __init__(self, prefix, relativeuipath=True):
         self.p = prefix
+        self._relativeuipath = relativeuipath
 
     def files(self):
         return []
