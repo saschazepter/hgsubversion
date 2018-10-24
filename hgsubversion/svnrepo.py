@@ -244,11 +244,20 @@ class svnremoterepo(peerrepository):
         def debugwireargs(self):
             raise NotImplementedError
 
-def instance(ui, url, create, intents=None):
+def instance(ui, url, create, intents=None, createopts=None):
     if url.startswith('http://') or url.startswith('https://'):
         try:
             # may yield a bogus 'real URL...' message
-            return httppeer.instance(ui, url, create, intents=intents)
+            if createopts:
+                # intents arg is present is createopts is present
+                return httppeer.instance(ui, url, create, intents=intents,
+                                         createopts=createopts)
+            elif intents:
+                return httppeer.instance(ui, url, create, intents=intents)
+            else:
+                # intents and createopts not passed, lets be safe and assume
+                # that mercurial does not know about them
+                return httppeer.instance(ui, url, create)
         except error.RepoError:
             ui.traceback()
             ui.note('(falling back to Subversion support)\n')
