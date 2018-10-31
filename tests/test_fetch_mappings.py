@@ -147,14 +147,18 @@ class MapTests(test_util.TestBase):
         repo = self._loadwithfilemap('replace_trunk_with_branch.svndump',
             "include alpha\n")
         self.assertEqual(node.hex(repo[0].node()), '88e2c7492d83e4bf30fbb2dcbf6aa24d60ac688d')
-        self.assertEqual(node.hex(revsymbol(repo, 'default').node()), 'e524296152246b3837fe9503c83b727075835155')
+        self.assertTrue(node.hex(revsymbol(repo, 'default').node()) in
+                        ('e524296152246b3837fe9503c83b727075835155',
+                         'ecf9b521a1799ebb0e01c1d1e86305ea8b542d2e'))
 
     @test_util.requiresreplay
     def test_file_map_exclude(self):
         repo = self._loadwithfilemap('replace_trunk_with_branch.svndump',
             "exclude alpha\n")
         self.assertEqual(node.hex(repo[0].node()), '2c48f3525926ab6c8b8424bcf5eb34b149b61841')
-        self.assertEqual(node.hex(revsymbol(repo, 'default').node()), 'b37a3c0297b71f989064d9b545b5a478bbed7cc1')
+        self.assertTrue(node.hex(revsymbol(repo, 'default').node()) in
+                        ('b37a3c0297b71f989064d9b545b5a478bbed7cc1',
+                         'e494691507b55deeb85c9c362d47b427f5c644ad'))
 
     @test_util.requiresreplay
     def test_file_map_rule_order(self):

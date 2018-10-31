@@ -72,10 +72,14 @@ rename a tag
         repo = self._load_fixture_and_fetch('tag_deletion_tag_branch.svndump')
         branches = set(repo[h].extra()['branch'] for h in repo.heads())
         self.assertEqual(branches, set(['default', 'from_2', ]))
-        self.assertEqual(
-            repo.tags(),
-            {'tip': 'g\xdd\xcd\x93\x03g\x1e\x7f\xa6-[V%\x99\x07\xd3\x9d>(\x94',
-             'new_tag': '=\xb8^\xb5\x18\xa9M\xdb\xf9\xb62Z\xa0\xb5R6+\xfe6.'})
+        # two hash values because from hg > 4.8, we try hard to reuse a manifest
+        # which leads to hash change of empty changesets
+        self.assertTrue(
+            repo.tags() in
+            ({'tip': 'g\xdd\xcd\x93\x03g\x1e\x7f\xa6-[V%\x99\x07\xd3\x9d>(\x94',
+             'new_tag': '=\xb8^\xb5\x18\xa9M\xdb\xf9\xb62Z\xa0\xb5R6+\xfe6.'},
+             {'new_tag': '\x1d+\xb8v:6@9D\x9f\xb9\xf4o\xd4n\x8e\x93\xd7\x07\xe3',
+              'tip': 'F/\xb8V\xd9\x00\xdb\xca\x9b\xd7\x90+O\x02\xbe\xe5\xd6\xc6\x7f\x99'}))
 
     def test_tags_in_unusual_location(self):
         repo = self._load_fixture_and_fetch('unusual_tags.svndump')

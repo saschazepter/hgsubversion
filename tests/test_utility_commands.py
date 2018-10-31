@@ -184,7 +184,8 @@ class UtilityTests(test_util.TestBase):
         hg.update(self.repo, new)
         wrappers.parents(lambda x, y: None, u, self.repo, svn=True)
         actual = u.popbuffer()
-        self.assertEqual(actual, '3:4e256962fc5d\n')
+        # two hashes becaure in hg > 4.8 we try hard to reuse the manifest
+        self.assertTrue(actual in ('3:4e256962fc5d\n', '3:13c5dc1514ad\n'))
 
         hg.update(self.repo, revsymbol(self.repo, 'default'))
 
@@ -232,7 +233,8 @@ class UtilityTests(test_util.TestBase):
         commands.outgoing(u, self.repo, repourl(repo_path))
         actual = u.popbuffer()
         self.assertTrue(node.hex(revsymbol(self.repo, 'localbranch').node())[:8] in actual)
-        self.assertEqual(actual.strip(), '5:6de15430fa20')
+        # two hashes for compat with hg < 4.8
+        self.assertTrue(actual.strip() in ('5:6de15430fa20', '5:76670ad282fd'))
         hg.update(self.repo, revsymbol(self.repo, 'default'))
         u.pushbuffer()
         commands.outgoing(u, self.repo, repourl(repo_path))
