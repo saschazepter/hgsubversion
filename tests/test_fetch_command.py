@@ -41,8 +41,9 @@ class TestBasicRepoLayout(test_util.TestBase):
         repo = self._load_fixture_and_fetch('simple_branch.svndump')
         self.assertEqual(node.hex(repo[0].node()),
                          'a1ff9f5d90852ce7f8e607fa144066b0a06bdc57')
-        self.assertEqual(node.hex(revsymbol(repo, 'tip').node()),
-                         '545e36ed13615e39c5c8fb0c325109d8cb8e00c3')
+        self.assertTrue(node.hex(revsymbol(repo, 'tip').node()) in
+                         ('545e36ed13615e39c5c8fb0c325109d8cb8e00c3',
+                          '04043a3f29a7070b1ea56d6ef832591956a41381'))
         self.assertEqual(len(revsymbol(repo, 'tip').parents()), 1)
         self.assertEqual(revsymbol(repo, 'tip').parents()[0], revsymbol(repo, 'default'))
         self.assertEqual(revsymbol(repo, 'tip').extra()['convert_revision'],
@@ -57,10 +58,14 @@ class TestBasicRepoLayout(test_util.TestBase):
                          '434ed487136c1b47c1e8f952edb4dc5a8e6328df')
         self.assertEqual(node.hex(revsymbol(repo, 'tip').node()),
                          '1083037b18d85cd84fa211c5adbaeff0fea2cd9f')
-        self.assertEqual(node.hex(revsymbol(repo, 'the_branch').node()),
-                         '4e256962fc5df545e2e0a51d0d1dc61c469127e6')
-        self.assertEqual(node.hex(revsymbol(repo, 'the_branch').parents()[0].node()),
-                         'f1ff5b860f5dbb9a59ad0921a79da77f10f25109')
+        # two hashes to be compat with hg < 4.8 because from 4.8 we try hard to
+        # reuse the manifest
+        self.assertTrue(node.hex(revsymbol(repo, 'the_branch').node()) in
+                        ('4e256962fc5df545e2e0a51d0d1dc61c469127e6',
+                         '13c5dc1514ad8619c589a8929bfe0ece5c00f18e'))
+        self.assertTrue(node.hex(revsymbol(repo, 'the_branch').parents()[0].node()) in
+                        ('f1ff5b860f5dbb9a59ad0921a79da77f10f25109',
+                         '62f4e5fb583a405df3dae62c156461a0f44219f2'))
         self.assertEqual(len(revsymbol(repo, 'tip').parents()), 1)
         self.assertEqual(revsymbol(repo, 'tip'), revsymbol(repo, 'default'))
         self.assertEqual(len(repo.heads()), 2)
@@ -73,12 +78,15 @@ class TestBasicRepoLayout(test_util.TestBase):
         # two possible hashes for bw compat to hg < 1.5, since hg 1.5
         # sorts entries in extra()
         self.assertTrue(node.hex(revsymbol(repo, 'tip').node()) in
-                         ('e92012d8c170a0236c84166167f149c2e28548c6',
-                         'b7bdc73041b1852563deb1ef3f4153c2fe4484f2'))
-        self.assertEqual(node.hex(revsymbol(repo, 'the_branch').node()),
-                         '4e256962fc5df545e2e0a51d0d1dc61c469127e6')
-        self.assertEqual(node.hex(revsymbol(repo, 'the_branch').parents()[0].node()),
-                         'f1ff5b860f5dbb9a59ad0921a79da77f10f25109')
+                        ('e92012d8c170a0236c84166167f149c2e28548c6',
+                        'b7bdc73041b1852563deb1ef3f4153c2fe4484f2'))
+        # two possible hashes for backward compatibility with hg < 4.8
+        self.assertTrue(node.hex(revsymbol(repo, 'the_branch').node()) in
+                        ('4e256962fc5df545e2e0a51d0d1dc61c469127e6',
+                         '13c5dc1514ad8619c589a8929bfe0ece5c00f18e'))
+        self.assertTrue(node.hex(revsymbol(repo, 'the_branch').parents()[0].node()) in
+                        ('f1ff5b860f5dbb9a59ad0921a79da77f10f25109',
+                         '62f4e5fb583a405df3dae62c156461a0f44219f2'))
         self.assertEqual(len(revsymbol(repo, 'tip').parents()), 1)
         self.assertEqual(revsymbol(repo, 'tip'), revsymbol(repo, 'default'))
         self.assertEqual(len(repo.heads()), 2)
@@ -119,8 +127,11 @@ class TestBasicRepoLayout(test_util.TestBase):
                          '926671740dec045077ab20f110c1595f935334fa')
         self.assertEqual(revsymbol(repo, 'tip').parents()[0].parents()[0],
                          revsymbol(repo, 'oldest'))
-        self.assertEqual(node.hex(revsymbol(repo, 'tip').node()),
-                         '1a6c3f30911d57abb67c257ec0df3e7bc44786f7')
+        # two hashes for backward compatibility with hg < 4.8 because from 4.8,
+        # we try hard to reuse the manifest
+        self.assertTrue(node.hex(revsymbol(repo, 'tip').node()) in
+                         ('1a6c3f30911d57abb67c257ec0df3e7bc44786f7',
+                          'fa799f2781255dba874645e849d75af837472518'))
 
     def test_propedit_with_nothing_else(self):
         repo = self._load_fixture_and_fetch('branch_prop_edit.svndump')
@@ -185,12 +196,15 @@ class TestStupidPull(test_util.TestBase):
                          '434ed487136c1b47c1e8f952edb4dc5a8e6328df')
         self.assertEqual(node.hex(revsymbol(repo, 'tip').node()),
                          '1083037b18d85cd84fa211c5adbaeff0fea2cd9f')
-        self.assertEqual(node.hex(revsymbol(repo, 'the_branch').node()),
-                         '4e256962fc5df545e2e0a51d0d1dc61c469127e6')
+        # two hashes to be compat with hg < 4.8
+        self.assertTrue(node.hex(revsymbol(repo, 'the_branch').node()) in
+                         ('4e256962fc5df545e2e0a51d0d1dc61c469127e6',
+                          '13c5dc1514ad8619c589a8929bfe0ece5c00f18e'))
         self.assertEqual(revsymbol(repo, 'the_branch').extra()['convert_revision'],
                          'svn:df2126f7-00ab-4d49-b42c-7e981dde0bcf/branches/the_branch@5')
-        self.assertEqual(node.hex(revsymbol(repo, 'the_branch').parents()[0].node()),
-                         'f1ff5b860f5dbb9a59ad0921a79da77f10f25109')
+        self.assertTrue(node.hex(revsymbol(repo, 'the_branch').parents()[0].node()) in
+                        ('f1ff5b860f5dbb9a59ad0921a79da77f10f25109',
+                         '62f4e5fb583a405df3dae62c156461a0f44219f2'))
         self.assertEqual(len(revsymbol(repo, 'tip').parents()), 1)
         self.assertEqual(revsymbol(repo, 'default').extra()['convert_revision'],
                          'svn:df2126f7-00ab-4d49-b42c-7e981dde0bcf/trunk@6')
@@ -204,8 +218,10 @@ class TestStupidPull(test_util.TestBase):
                          '926671740dec045077ab20f110c1595f935334fa')
         self.assertEqual(revsymbol(repo, 'tip').parents()[0].parents()[0],
                          revsymbol(repo, 'oldest'))
-        self.assertEqual(node.hex(revsymbol(repo, 'tip').node()),
-                         '1a6c3f30911d57abb67c257ec0df3e7bc44786f7')
+        # two hashes to be compat with hg < 4.8
+        self.assertTrue(node.hex(revsymbol(repo, 'tip').node()) in
+                         ('1a6c3f30911d57abb67c257ec0df3e7bc44786f7',
+                          'fa799f2781255dba874645e849d75af837472518'))
 
     def test_empty_repo(self):
         # This used to crash HgEditor because it could be closed without
