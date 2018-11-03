@@ -17,6 +17,7 @@ For more information and instructions, see :hg:`help subversion`.
 
 testedwith = '3.7 3.8 3.9 4.0 4.1 4.2 4.3 4.4 4.5 4.6 4.7 4.8'
 
+import inspect
 import os
 
 from mercurial import commands
@@ -360,19 +361,41 @@ def _templatehelper(ctx, kw):
     else:
         raise hgerror.Abort('unrecognized hgsubversion keyword %s' % kw)
 
-@templatekeyword('svnrev')
-def svnrevkw(**args):
-    """:svnrev: String. Converted subversion revision number."""
-    return _templatehelper(args['ctx'], 'svnrev')
+_ishg48 = 'requires' in inspect.getargspec(
+    getattr(templatekeyword, '_extrasetup', lambda: None)).args
 
-@templatekeyword('svnpath')
-def svnpathkw(**args):
-    """:svnpath: String. Converted subversion revision project path."""
-    return _templatehelper(args['ctx'], 'svnpath')
+if _ishg48:
+    @templatekeyword('svnrev', requires={'ctx'})
+    def svnrevkw(context, mapping):
+        """:svnrev: String. Converted subversion revision number."""
+        ctx = context.resource(mapping, 'ctx')
+        return _templatehelper(ctx, 'svnrev')
 
-@templatekeyword('svnuuid')
-def svnuuidkw(**args):
-    """:svnuuid: String. Converted subversion revision repository identifier."""
-    return _templatehelper(args['ctx'], 'svnuuid')
+    @templatekeyword('svnpath', requires={'ctx'})
+    def svnpathkw(context, mapping):
+        """:svnpath: String. Converted subversion revision project path."""
+        ctx = context.resource(mapping, 'ctx')
+        return _templatehelper(ctx, 'svnpath')
+
+    @templatekeyword('svnuuid', requires={'ctx'})
+    def svnuuidkw(context, mapping):
+        """:svnuuid: String. Converted subversion revision repository identifier."""
+        ctx = context.resource(mapping, 'ctx')
+        return _templatehelper(ctx, 'svnuuid')
+else:
+    @templatekeyword('svnrev')
+    def svnrevkw(**args):
+        """:svnrev: String. Converted subversion revision number."""
+        return _templatehelper(args['ctx'], 'svnrev')
+
+    @templatekeyword('svnpath')
+    def svnpathkw(**args):
+        """:svnpath: String. Converted subversion revision project path."""
+        return _templatehelper(args['ctx'], 'svnpath')
+
+    @templatekeyword('svnuuid')
+    def svnuuidkw(**args):
+        """:svnuuid: String. Converted subversion revision repository identifier."""
+        return _templatehelper(args['ctx'], 'svnuuid')
 
 loadkeyword(templatekeyword)
