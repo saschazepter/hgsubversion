@@ -72,7 +72,7 @@ def _do_case(self, name, layout):
                                   self.wc_path,
                                   wc3_path,
                                   update=False,
-                                  rev=[0])
+                                  rev=['0'])
     srcrepo = test_util.getlocalpeer(src)
     dest = test_util.getlocalpeer(dest)
 
