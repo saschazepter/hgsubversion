@@ -21,12 +21,7 @@ import inspect
 import os
 
 from mercurial import commands
-try:
-    from mercurial import exchange
-    exchange.push  # existed in first iteration of this file
-except ImportError:
-    # We only *use* the exchange module in hg 3.2+, so this is safe
-    pass
+from mercurial import exchange
 from mercurial import error as hgerror
 from mercurial import extensions
 from mercurial import help
@@ -157,12 +152,8 @@ def extsetup(ui):
     except:
         pass
 
-    if not hgutil.safehasattr(localrepo.localrepository, 'push'):
-        # Mercurial >= 3.2
-        extensions.wrapfunction(exchange, 'push', wrappers.exchangepush)
-    if not hgutil.safehasattr(localrepo.localrepository, 'pull'):
-        # Mercurial >= 3.2
-        extensions.wrapfunction(exchange, 'pull', wrappers.exchangepull)
+    extensions.wrapfunction(exchange, 'push', wrappers.exchangepush)
+    extensions.wrapfunction(exchange, 'pull', wrappers.exchangepull)
 
     helpdir = os.path.join(os.path.dirname(__file__), 'help')
 
