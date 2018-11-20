@@ -249,6 +249,12 @@ class PrefixMatch(object):
     def prefix(self):
         return False
 
+    def visitdir(self, dir):
+        return True
+
+    def visitchildrenset(self, dir):
+        return 'this'
+
 def outgoing_revisions(repo, reverse_map, sourcerev):
     """Given a repo and an hg_editor, determines outgoing revisions for the
     current working copy state.
