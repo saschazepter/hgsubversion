@@ -163,7 +163,7 @@ class TestSingleDirPush(test_util.TestBase):
         self.pushrevisions()
         repo = self.repo # repo is outdated after the rebase happens, refresh
         self.assertTrue('foo' in test_util.svnls(repo_path, ''))
-        self.assertEqual(compathacks.branchset(repo), set(['default']))
+        self.assertEqual(set(repo.branchmap()), set(['default']))
         # Have to cross to another branch head, so hg.update doesn't work
         commands.update(self.ui(),
                         self.repo,

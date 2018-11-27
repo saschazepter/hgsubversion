@@ -140,7 +140,7 @@ def _convert_rev(ui, meta, svn, r, tbdelta, firstrun):
             tag = meta.get_path_tag(meta.remotename(branch))
             if (tag and tag not in meta.tags
                 and branch not in meta.branches
-                and branch not in compathacks.branchset(meta.repo)
+                and branch not in meta.repo.branchmap()
                 and not files):
                 continue
 

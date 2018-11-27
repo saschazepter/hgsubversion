@@ -759,7 +759,7 @@ def convert_rev(ui, meta, svn, r, tbdelta, firstrun):
             # svnmeta.committag(), we can skip the whole branch for now
             if (tag and tag not in meta.tags and
                 b not in meta.branches
-                and b not in compathacks.branchset(meta.repo)
+                and b not in meta.repo.branchmap()
                 and not files_touched):
                 continue
 

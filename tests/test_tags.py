@@ -51,7 +51,7 @@ rename a tag
 
     def test_branch_from_tag(self):
         repo = self._load_fixture_and_fetch('branch_from_tag.svndump')
-        self.assert_('branch_from_tag' in compathacks.branchset(repo))
+        self.assert_('branch_from_tag' in repo.branchmap())
         self.assertEqual(repo[1], revsymbol(repo, 'tag_r3'))
         self.assertEqual(revsymbol(repo, 'branch_from_tag').parents()[0],
                          revsymbol(repo, 'copied_tag'))
