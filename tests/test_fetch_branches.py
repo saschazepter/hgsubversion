@@ -100,7 +100,7 @@ class TestFetchBranches(test_util.TestBase):
                           'unorderedbranch.svndump', 'NaN')
         repo = self._load_fixture_and_fetch_with_anchor(
             'unorderedbranch.svndump', '4')
-        self.assertTrue('c' not in compathacks.branchset(repo))
+        self.assertTrue('c' not in set(repo.branchmap()))
 
     def test_branches_weird_moves(self):
         repo = self._load_fixture_and_fetch('renamedproject.svndump',
