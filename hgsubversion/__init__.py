@@ -47,6 +47,7 @@ except (ImportError, AttributeError):
         'svn.ra',
     }
 
+from mercurial import discovery
 from mercurial import revset
 from mercurial import subrepo
 
@@ -101,26 +102,13 @@ wrapcmds = { # cmd: generic, target, fixdoc, ppopts, opts
     ]),
 }
 
-try:
-    from mercurial import discovery
-    def findcommonoutgoing(orig, *args, **opts):
-        capable = getattr(args[1], 'capable', lambda x: False)
-        if capable('subversion'):
-            return wrappers.findcommonoutgoing(*args, **opts)
-        else:
-            return orig(*args, **opts)
-    extensions.wrapfunction(discovery, 'findcommonoutgoing', findcommonoutgoing)
-except AttributeError:
-    # only need the discovery variant of this code when we drop hg < 1.6
-    def findoutgoing(orig, *args, **opts):
-        capable = getattr(args[1], 'capable', lambda x: False)
-        if capable('subversion'):
-            return wrappers.findoutgoing(*args, **opts)
-        else:
-            return orig(*args, **opts)
-    extensions.wrapfunction(discovery, 'findoutgoing', findoutgoing)
-except ImportError:
-    pass
+def findcommonoutgoing(orig, *args, **opts):
+    capable = getattr(args[1], 'capable', lambda x: False)
+    if capable('subversion'):
+        return wrappers.findcommonoutgoing(*args, **opts)
+    else:
+        return orig(*args, **opts)
+extensions.wrapfunction(discovery, 'findcommonoutgoing', findcommonoutgoing)
 
 def extsetup(ui):
     """insert command wrappers for a bunch of commands"""
