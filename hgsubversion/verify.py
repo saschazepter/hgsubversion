@@ -175,19 +175,19 @@ def verify(ui, repo, args=None, **opts):
 
                     if 'svn:executable' in self.props:
                         if fctx.flags() != 'x':
-                            self.ui.warn('wrong flags for: %s\n' % self.file)
+                            self.ui.write('wrong flags for: %s\n' % self.file)
                             self.failed = True
                     elif 'svn:special' in self.props:
                         hgdata = 'link ' + hgdata
                         if fctx.flags() != 'l':
-                            self.ui.warn('wrong flags for: %s\n' % self.file)
+                            self.ui.write('wrong flags for: %s\n' % self.file)
                             self.failed = True
                     elif fctx.flags():
-                        self.ui.warn('wrong flags for: %s\n' % self.file)
+                        self.ui.write('wrong flags for: %s\n' % self.file)
                         self.failed = True
 
                     if hgdata != svndata:
-                        self.ui.warn('difference in: %s\n' % self.file)
+                        self.ui.write('difference in: %s\n' % self.file)
                         diff_file(self.file, svndata)
                         self.failed = True
 
@@ -214,10 +214,10 @@ def verify(ui, repo, args=None, **opts):
                 self.ui.progress('verify', None, total=self.total)
 
                 for f in self.unexpected:
-                    self.ui.warn('unexpected file: %s\n' % f)
+                    self.ui.write('unexpected file: %s\n' % f)
                     self.failed = True
                 for f in self.missing:
-                    self.ui.warn('missing file: %s\n' % f)
+                    self.ui.write('missing file: %s\n' % f)
                     self.failed = True
                 return not self.failed
 
