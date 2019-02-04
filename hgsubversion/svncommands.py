@@ -108,7 +108,7 @@ def _buildmeta(ui, repo, args, partial=False, skipuuid=False):
     # of the repository instead. During this traversal, we find all converted
     # changesets that close a branch, and store their first parent
     for ctx in util.get_contexts(repo, startrev):
-        ui.progress('prepare', ctx.rev() - startrev, total=numrevs)
+        compathacks.progress(ui, 'prepare', ctx.rev() - startrev, total=numrevs)
 
         convinfo = util.getsvnrev(ctx, None)
         if not convinfo:
@@ -132,11 +132,11 @@ def _buildmeta(ui, repo, args, partial=False, skipuuid=False):
             else:
                 closed.add(parentctx.rev())
 
-    ui.progress('prepare', None, total=numrevs)
+    compathacks.progress(ui, 'prepare', None, total=numrevs)
 
     revmapbuf = []
     for ctx in util.get_contexts(repo, startrev):
-        ui.progress('rebuild', ctx.rev() - startrev, total=numrevs)
+        compathacks.progress(ui, 'rebuild', ctx.rev() - startrev, total=numrevs)
 
         convinfo = util.getsvnrev(ctx, None)
         if not convinfo:
@@ -267,7 +267,7 @@ def _buildmeta(ui, repo, args, partial=False, skipuuid=False):
                                   revision)
 
     revmap.batchset(revmapbuf, youngest)
-    ui.progress('rebuild', None, total=numrevs)
+    compathacks.progress(ui, 'rebuild', None, total=numrevs)
 
     # save off branch info
     util.dump(branchinfo, meta.branch_info_file)

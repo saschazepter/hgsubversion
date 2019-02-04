@@ -27,6 +27,7 @@ except ImportError:
     logcmdutil = None
 from mercurial import scmutil
 
+import compathacks
 import replay
 import pushmod
 import stupid as stupidmod
@@ -502,7 +503,8 @@ def pull(repo, source, heads=[], force=False, meta=None):
                             w = hgutil.termwidth()
                         bits = (r.revnum, r.author, msg)
                         ui.status(('[r%d] %s: %s' % bits)[:w] + '\n')
-                        ui.progress('pull', r.revnum - start, total=total)
+                        compathacks.progress(ui, 'pull', r.revnum - start,
+                                             total=total)
 
                         meta.save_tbdelta(tbdelta)
                         close = pullfuns[have_replay](ui, meta, svn, r, tbdelta,
@@ -539,7 +541,7 @@ def pull(repo, source, heads=[], force=False, meta=None):
             lock.release()
     finally:
         if total is not None:
-            ui.progress('pull', None, total=total)
+            compathacks.progress(ui, 'pull', None, total=total)
         util.swap_out_encoding(old_encoding)
 
     if lastpulled is not None:
