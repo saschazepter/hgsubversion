@@ -3,7 +3,19 @@
 import errno
 import sys
 
-from mercurial import util
+from mercurial import ui as uimod, util
+
+# ui.makeprogress will be dropped after hg-5.1
+if util.safehasattr(uimod.ui, 'makeprogress'):
+    def progress(ui, topic, pos, item="", unit="", total=None):
+        progress = ui.makeprogress(topic, unit, total)
+        if pos is not None:
+            progress.update(pos, item=item)
+        else:
+            progress.complete()
+else:
+    def progress(ui, topic, pos, item="", unit="", total=None):
+        ui.progress(topic, pos, item="", unit="", total=None)
 
 def pickle_load(f):
     import cPickle as pickle

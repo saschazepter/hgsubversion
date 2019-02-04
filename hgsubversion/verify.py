@@ -4,6 +4,7 @@ import posixpath
 from mercurial import error
 from mercurial import worker
 
+import compathacks
 import svnwrap
 import svnrepo
 import util
@@ -94,7 +95,7 @@ def verify(ui, repo, args=None, **opts):
         w = worker.worker(repo.ui, perarg, verifydata, (), tuple(svndata))
         i = 0
         for _, t in w:
-            ui.progress('verify', i, total=len(hgfiles))
+            compathacks.progress(ui, 'verify', i, total=len(hgfiles))
             i += 1
             fn, ok = t.split('\0', 2)
             if not bool(ok):
@@ -110,7 +111,7 @@ def verify(ui, repo, args=None, **opts):
                 ui.write('missing file: %s\n' % f)
             result = 1
 
-        ui.progress('verify', None, total=len(hgfiles))
+        compathacks.progress(ui, 'verify', None, total=len(hgfiles))
 
     else:
         class VerifyEditor(svnwrap.Editor):
@@ -152,7 +153,7 @@ def verify(ui, repo, args=None, **opts):
                     self.props = None
 
                 self.seen += 1
-                self.ui.progress('verify', self.seen, total=self.total)
+                compathacks.progress(self.ui, 'verify', self.seen, total=self.total)
 
             def open_file(self, path, base_revnum):
                 raise NotImplementedError()
@@ -211,7 +212,7 @@ def verify(ui, repo, args=None, **opts):
                 raise NotImplementedError()
 
             def check(self):
-                self.ui.progress('verify', None, total=self.total)
+                compathacks.progress(self.ui, 'verify', None, total=self.total)
 
                 for f in self.unexpected:
                     self.ui.write('unexpected file: %s\n' % f)
