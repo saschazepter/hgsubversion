@@ -26,6 +26,7 @@ def makememfilectx(repo, memctx, path, data, islink, isexec, copied):
     """Return a memfilectx
 
     Works around API change by 8a0cac20a1ad (first in 4.5).
+    and also API change by 550a172a603b9e (first in 5.0)
     """
     from mercurial import context
     try:
@@ -33,8 +34,15 @@ def makememfilectx(repo, memctx, path, data, islink, isexec, copied):
                                   islink=islink, isexec=isexec, copied=copied,
                                   changectx=memctx)
     except TypeError:
-        return context.memfilectx(repo=repo, path=path, data=data,
-                                  islink=islink, isexec=isexec, copied=copied)
+        try:
+            return context.memfilectx(repo=repo, path=path, data=data,
+                                      islink=islink, isexec=isexec,
+                                      copied=copied)
+        except TypeError:
+            return context.memfilectx(repo=repo, changectx=memctx,
+                                      path=path, data=data,
+                                      islink=islink, isexec=isexec,
+                                      copysource=copied)
 
 def filectxfn_deleted(memctx, path):
     """
